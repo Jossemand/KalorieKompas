@@ -237,23 +237,9 @@ mark{ background: none; color: var(--primary); font-weight: 800; }
 /* Mandag–torsdag øverst, fredag–søndag + ugens opsummering nederst */
 @media (min-width: 1000px){ .week{ grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 
-/* Brede skærme: hele ugen på én række som en ugetavle med kompakte måltider */
-@media (min-width: 1400px){
-  .content:has(#view-ugeplan.is-active){ max-width: 1720px; }
-  .week{ grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
-  .day{ gap: 12px; padding: 14px 12px; }
-  .day-name{ font-size: 1.05rem; }
-  .day-total{ flex-wrap: wrap; column-gap: 4px; }
-  .day-total strong{ font-size: 1.35rem; }
-  .meal{ gap: 8px; min-height: 0; padding: 10px; }
-  .meal-top{ flex-wrap: wrap; column-gap: 6px; }
-  .meal-icon,
-  .meal-chevron{ display: none; }
-}
-
 /* Opsummering af ugen – udfylder pladsen efter søndag i gitteret med 2 eller 4 kolonner */
 .week-summary{ display: none; }
-@media (min-width: 700px) and (max-width: 1399px){
+@media (min-width: 700px){
   .week-summary{
     display: flex;
     flex-direction: column;

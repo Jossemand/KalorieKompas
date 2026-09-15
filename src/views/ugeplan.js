@@ -84,7 +84,7 @@ function render(){
 
 const progress = (kcal, goal) => (goal > 0 ? Math.min(kcal / goal, 1) * 100 : 0);
 
-// Ugens total og gennemsnit pr. planlagt dag. Vises kun i gitteret med 2 eller 4 kolonner (se views.css)
+// Ugens total og gennemsnit pr. planlagt dag. Vises som 8. kort i gitteret fra 700 px (se views.css)
 function weekSummaryHtml(stats, goal){
   const planned = DAYS.filter(dag => stats[dag].kcal > 0);
   const total = planned.reduce((sum, dag) => sum + stats[dag].kcal, 0);
