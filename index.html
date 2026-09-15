@@ -98,7 +98,7 @@ npm run dev</pre>
 <dialog class="sheet" id="ingrediens-sheet" aria-labelledby="ingrediens-sheet-title">
   <form class="sheet-body" id="ingrediens-form" novalidate>
     <header class="sheet-head">
-      <h2 class="sheet-title" id="ingrediens-sheet-title">Ny ingrediens</h2>
+      <h2 class="sheet-title" id="ingrediens-sheet-title" tabindex="-1" autofocus>Ny ingrediens</h2>
       <button type="button" class="icon-btn" data-close aria-label="Luk"><span data-icon="x"></span></button>
     </header>
     <div class="sheet-scroll">
@@ -138,10 +138,24 @@ npm run dev</pre>
 <dialog class="sheet sheet-tall" id="madret-sheet" aria-labelledby="madret-sheet-title">
   <form class="sheet-body" id="madret-form" novalidate>
     <header class="sheet-head">
-      <h2 class="sheet-title" id="madret-sheet-title">Ny madret</h2>
+      <h2 class="sheet-title" id="madret-sheet-title" tabindex="-1" autofocus>Ny madret</h2>
       <button type="button" class="icon-btn" data-close aria-label="Luk"><span data-icon="x"></span></button>
     </header>
     <div class="sheet-scroll">
+      <div class="photo-field">
+        <button type="button" class="photo-pick" id="madret-photo-pick">
+          <span class="photo-pick-icon" data-icon="camera"></span>
+          <span class="photo-pick-text"><strong>Tilføj billede</strong><span>Valgfrit – tag et foto eller vælg fra galleriet</span></span>
+        </button>
+        <div class="photo-preview" id="madret-photo-preview" hidden>
+          <img id="madret-photo-img" alt="Billede af madretten">
+          <div class="photo-actions">
+            <button type="button" class="btn" id="madret-photo-change">Skift</button>
+            <button type="button" class="btn" id="madret-photo-remove">Fjern</button>
+          </div>
+        </div>
+        <input type="file" accept="image/*" class="visually-hidden" id="madret-photo-input" tabindex="-1" aria-hidden="true">
+      </div>
       <label class="field">
         <span class="field-label">Navn</span>
         <input class="input" id="madret-navn" autocomplete="off" placeholder="Fx Havregrød med banan" enterkeyhint="next">
@@ -184,7 +198,7 @@ npm run dev</pre>
     <header class="sheet-head">
       <div>
         <p class="sheet-eyebrow" id="meal-sheet-day"></p>
-        <h2 class="sheet-title" id="meal-sheet-title"></h2>
+        <h2 class="sheet-title" id="meal-sheet-title" tabindex="-1" autofocus></h2>
       </div>
       <button type="button" class="icon-btn" data-close aria-label="Luk"><span data-icon="x"></span></button>
     </header>
@@ -194,10 +208,31 @@ npm run dev</pre>
   </div>
 </dialog>
 
+<!-- Billede af en eksisterende madret -->
+<dialog class="sheet" id="billede-sheet" aria-labelledby="billede-sheet-title">
+  <div class="sheet-body">
+    <header class="sheet-head">
+      <div>
+        <p class="sheet-eyebrow">Billede</p>
+        <h2 class="sheet-title" id="billede-sheet-title" tabindex="-1" autofocus></h2>
+      </div>
+      <button type="button" class="icon-btn" data-close aria-label="Luk"><span data-icon="x"></span></button>
+    </header>
+    <div class="sheet-scroll">
+      <div class="photo-large" id="billede-sheet-preview"></div>
+      <input type="file" accept="image/*" class="visually-hidden" id="billede-sheet-input" tabindex="-1" aria-hidden="true">
+    </div>
+    <footer class="sheet-foot photo-sheet-foot">
+      <button type="button" class="btn btn-secondary" id="billede-sheet-remove">Fjern</button>
+      <button type="button" class="btn btn-primary" id="billede-sheet-pick"><span data-icon="camera"></span><span id="billede-sheet-pick-label">Vælg billede</span></button>
+    </footer>
+  </div>
+</dialog>
+
 <!-- Bekræftelse -->
 <dialog class="sheet sheet-confirm" id="confirm-sheet" aria-labelledby="confirm-title">
   <div class="sheet-body">
-    <header class="sheet-head"><h2 class="sheet-title" id="confirm-title"></h2></header>
+    <header class="sheet-head"><h2 class="sheet-title" id="confirm-title" tabindex="-1" autofocus></h2></header>
     <div class="sheet-scroll"><p id="confirm-message"></p></div>
     <footer class="sheet-foot">
       <button type="button" class="btn btn-secondary" data-answer="no">Annuller</button>
@@ -212,7 +247,7 @@ npm run dev</pre>
   <div class="scanner-target"><span class="scanner-line"></span></div>
   <div class="scanner-overlay">
     <div class="scanner-top">
-      <span class="scanner-title">Scan stregkode</span>
+      <span class="scanner-title" tabindex="-1" autofocus>Scan stregkode</span>
       <button type="button" class="icon-btn" id="scanner-close" aria-label="Luk scanner"><span data-icon="x"></span></button>
     </div>
     <div class="scanner-bottom">

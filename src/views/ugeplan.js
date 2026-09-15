@@ -1,4 +1,4 @@
-import { DAYS, MEALS, store, subscribe, saveKalorieMaal, setMeal } from "../state.js";
+import { DAYS, MEALS, store, subscribe, billedeUrl, saveKalorieMaal, setMeal } from "../state.js";
 import { icon, MEAL_ICONS } from "../lib/icons.js";
 import { escapeHtml, formatKcal, parseDecimal } from "../lib/format.js";
 import { openSheet, showError, toast } from "../lib/ui.js";
@@ -93,7 +93,7 @@ function dayCard(dag, { kcal, meals }, goal){
         ${meals.map(({ maaltid, dish }) => `
           <li>
             <button type="button" class="meal${dish ? "" : " is-empty"}" data-day="${dag}" data-meal="${maaltid}">
-              <span class="meal-icon" data-cat="${maaltid}">${icon(MEAL_ICONS[maaltid])}</span>
+              ${mealIconHtml(maaltid, dish)}
               <span class="meal-text">
                 <span class="meal-top">
                   <span class="meal-label">${maaltid}</span>
@@ -106,6 +106,13 @@ function dayCard(dag, { kcal, meals }, goal){
           </li>`).join("")}
       </ul>
     </article>`;
+}
+
+// Rettens billede, hvis der er et – ellers kategoriens ikon
+function mealIconHtml(maaltid, dish){
+  const photo = dish && billedeUrl(dish.billede_sti);
+  if (!photo) return `<span class="meal-icon" data-cat="${maaltid}">${icon(MEAL_ICONS[maaltid])}</span>`;
+  return `<span class="meal-icon meal-photo"><img src="${escapeHtml(photo)}" alt="" loading="lazy" decoding="async"></span>`;
 }
 
 /* ---------- Vælg madret til et måltid ---------- */
@@ -122,10 +129,11 @@ function renderOptions(){
   const selectedId = store.ugeplan[`${dag}|${maaltid}`] ?? null;
   const dishes = store.madretter.filter(d => d.kategori === maaltid);
 
-  const option = ({ id, name, meta = "", kcal = null }) => `
+  const option = ({ id, name, meta = "", kcal = null, photo = null }) => `
     <li>
       <button type="button" class="option${id === selectedId ? " is-selected" : ""}" data-option="${id ?? ""}" aria-pressed="${id === selectedId}">
         <span class="option-radio"></span>
+        ${photo ? `<span class="option-photo"><img src="${escapeHtml(photo)}" alt="" loading="lazy" decoding="async"></span>` : ""}
         <span class="option-text">
           <span class="option-name">${escapeHtml(name)}</span>
           ${meta ? `<span class="option-meta">${escapeHtml(meta)}</span>` : ""}
@@ -139,6 +147,7 @@ function renderOptions(){
     name: dish.navn,
     meta: dish.madret_ingredienser.map(row => row.ingredienser?.navn).filter(Boolean).join(", "),
     kcal: dish.kcal,
+    photo: billedeUrl(dish.billede_sti),
   }));
 
   const empty = dishes.length ? "" : `

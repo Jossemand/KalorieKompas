@@ -1,12 +1,14 @@
 import {
   createElement,
-  CalendarDays, Carrot, Check, ChevronRight, CircleAlert, CircleCheck, Coffee, Compass, Cookie,
-  CookingPot, Keyboard, Minus, Plus, Sandwich, ScanBarcode, Search, SearchX, Soup, Target, Trash2, X,
+  Camera, CalendarDays, Carrot, Check, ChevronRight, CircleAlert, CircleCheck, Coffee, Compass, Cookie,
+  CookingPot, ImagePlus, Keyboard, Minus, Plus, Sandwich, ScanBarcode, Search, SearchX, Soup, Target, Trash2, X,
 } from "lucide";
 
 // Kun de ikoner, appen bruger, kommer med i bundlen
 const ICONS = {
+  camera: Camera,
   "calendar-days": CalendarDays,
+  "image-plus": ImagePlus,
   carrot: Carrot,
   check: Check,
   "chevron-right": ChevronRight,

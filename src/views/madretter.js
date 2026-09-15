@@ -1,4 +1,7 @@
-import { MEALS, store, subscribe, addMadret, deleteMadret, sumNutrition } from "../state.js";
+import {
+  MEALS, store, subscribe, addMadret, deleteMadret, sumNutrition, billedeUrl, setMadretBillede, removeMadretBillede,
+} from "../state.js";
+import { prepareImage } from "../lib/image.js";
 import { icon, MEAL_ICONS } from "../lib/icons.js";
 import { escapeHtml, formatKcal, highlight, parseDecimal, searchByName, toInputValue } from "../lib/format.js";
 import { emptyStateHtml, macrosHtml } from "../lib/templates.js";
@@ -12,6 +15,8 @@ const finePointer = matchMedia("(pointer: fine)"); // mus/trackpad – på touch
 let filter = "Alle";
 let pending = [];    // kladde til ny madret: [{ ingrediens, maengde_g }]
 let highlighted = 0; // valgt søgeresultat ved piletaster
+let draftPhoto = null;  // kladdens billede: { blob, url }
+let photoDishId = null; // madretten, der vises i billede-arket
 
 export function setupMadretter(){
   $("btn-new-madret").addEventListener("click", () => openBuilder());
@@ -38,6 +43,7 @@ export function setupMadretter(){
   $("madret-pending").addEventListener("click", onPendingClick);
   $("madret-pending").addEventListener("input", onPendingInput);
   $("madret-form").addEventListener("submit", onSubmit);
+  setupPhotos();
   subscribe(render);
 }
 
@@ -86,11 +92,20 @@ function render(){
 
   list.innerHTML = dishes.map(dish => {
     const names = dish.madret_ingredienser.map(row => row.ingredienser?.navn).filter(Boolean).join(", ");
+    const name = escapeHtml(dish.navn);
+    const photo = billedeUrl(dish.billede_sti);
+    const photoButton = store.billederKlar
+      ? `<button type="button" class="icon-btn" data-photo aria-label="${photo ? "Skift billede af" : "Tilføj billede til"} ${name}">${icon(photo ? "camera" : "image-plus")}</button>`
+      : "";
     return `
       <article class="dish card" data-id="${dish.id}">
+        ${photo ? `<button type="button" class="dish-photo" data-photo aria-label="Billede af ${name}"><img src="${escapeHtml(photo)}" alt="" loading="lazy" decoding="async"></button>` : ""}
         <div class="dish-top">
           <span class="badge" data-cat="${dish.kategori}">${icon(MEAL_ICONS[dish.kategori], 14)}${dish.kategori}</span>
-          <button type="button" class="icon-btn icon-btn-danger" data-delete aria-label="Slet ${escapeHtml(dish.navn)}">${icon("trash")}</button>
+          <div class="dish-actions">
+            ${photoButton}
+            <button type="button" class="icon-btn icon-btn-danger" data-delete aria-label="Slet ${name}">${icon("trash")}</button>
+          </div>
         </div>
         <h3 class="dish-title">${escapeHtml(dish.navn)}</h3>
         <p class="dish-ingredients">${escapeHtml(names || "Ingen ingredienser")}</p>
@@ -105,6 +120,9 @@ function render(){
 async function onListClick(event){
   const newButton = event.target.closest("[data-new]");
   if (newButton) return openBuilder(newButton.dataset.new);
+
+  const photoButton = event.target.closest("[data-photo]");
+  if (photoButton) return openPhotoSheet(photoButton.closest("[data-id]").dataset.id);
 
   const deleteButton = event.target.closest("[data-delete]");
   if (!deleteButton) return;
@@ -131,7 +149,7 @@ async function onListClick(event){
 // Kladden bevares, hvis arket lukkes uden at gemme, så et fejltryk ikke sletter arbejdet
 export function openBuilder(kategori){
   const form = $("madret-form");
-  const isEmptyDraft = pending.length === 0 && !$("madret-navn").value.trim();
+  const isEmptyDraft = pending.length === 0 && !$("madret-navn").value.trim() && !draftPhoto;
   if (isEmptyDraft) {
     form.reset();
     const preset = MEALS.includes(kategori) ? kategori : "Morgenmad";
@@ -140,6 +158,7 @@ export function openBuilder(kategori){
   $("madret-search").value = "";
   renderResults();
   renderPending();
+  renderDraftPhoto();
   openSheet($("madret-sheet"));
 }
 
@@ -306,18 +325,114 @@ async function onSubmit(event){
   const submit = $("madret-submit");
   setBusy(submit, true);
   try {
-    await addMadret({ navn, kategori, items: pending });
+    const { billedeFejl } = await addMadret({ navn, kategori, items: pending, billede: draftPhoto?.blob });
     pending = [];
+    setDraftPhoto(null);
     form.reset();
     $("madret-sheet").close();
     if (filter !== "Alle" && filter !== kategori) {
       filter = "Alle"; // vis den nye ret, selvom et andet filter var valgt
       render();
     }
-    toast(`${navn} er gemt`);
+    if (billedeFejl) showError(new Error(`${navn} er gemt, men billedet kom ikke med. ${billedeFejl.message}`));
+    else toast(`${navn} er gemt`);
   } catch (err) {
     showError(err);
   } finally {
     setBusy(submit, false);
+  }
+}
+
+/* ---------- Billeder ---------- */
+function setupPhotos(){
+  // Billede i byggeren til en ny ret
+  const pickDraft = () => { if (billederKlar()) $("madret-photo-input").click(); };
+  $("madret-photo-pick").addEventListener("click", pickDraft);
+  $("madret-photo-change").addEventListener("click", pickDraft);
+  $("madret-photo-remove").addEventListener("click", () => setDraftPhoto(null));
+  $("madret-photo-input").addEventListener("change", async event => {
+    const file = takeFile(event.target);
+    if (!file) return;
+    try {
+      setDraftPhoto(await prepareImage(file));
+    } catch (err) {
+      showError(err);
+    }
+  });
+
+  // Billede af en eksisterende ret
+  $("billede-sheet-pick").addEventListener("click", () => $("billede-sheet-input").click());
+  $("billede-sheet-input").addEventListener("change", event => {
+    const file = takeFile(event.target);
+    if (!file) return;
+    updatePhoto(async () => {
+      await setMadretBillede(photoDishId, await prepareImage(file));
+      return "Billedet er gemt";
+    });
+  });
+  $("billede-sheet-remove").addEventListener("click", () => updatePhoto(async () => {
+    await removeMadretBillede(photoDishId);
+    return "Billedet er fjernet";
+  }));
+}
+
+// Læs den valgte fil og nulstil feltet, så den samme fil kan vælges igen
+function takeFile(input){
+  const [file] = input.files;
+  input.value = "";
+  return file;
+}
+
+function billederKlar(){
+  if (store.billederKlar) return true;
+  toast("Billeder er ikke slået til endnu – kør supabase/setup.sql igen i Supabase", { type: "error" });
+  return false;
+}
+
+function setDraftPhoto(blob){
+  if (draftPhoto) URL.revokeObjectURL(draftPhoto.url);
+  draftPhoto = blob ? { blob, url: URL.createObjectURL(blob) } : null;
+  renderDraftPhoto();
+}
+
+function renderDraftPhoto(){
+  const img = $("madret-photo-img");
+  $("madret-photo-pick").hidden = Boolean(draftPhoto);
+  $("madret-photo-preview").hidden = !draftPhoto;
+  if (draftPhoto) img.src = draftPhoto.url;
+  else img.removeAttribute("src");
+}
+
+function openPhotoSheet(dishId){
+  photoDishId = dishId;
+  renderPhotoSheet();
+  openSheet($("billede-sheet"));
+}
+
+function renderPhotoSheet(busy = false){
+  const dish = store.madretter.find(d => d.id === photoDishId);
+  if (!dish) return;
+  const url = billedeUrl(dish.billede_sti);
+  $("billede-sheet-title").textContent = dish.navn;
+  $("billede-sheet-preview").innerHTML = `
+    ${url
+      ? `<img src="${escapeHtml(url)}" alt="Billede af ${escapeHtml(dish.navn)}">`
+      : `<span class="photo-empty">${icon("image-plus", 40)}Intet billede endnu</span>`}
+    ${busy ? '<span class="photo-busy"><span class="spinner"></span></span>' : ""}`;
+  $("billede-sheet-remove").hidden = !url;
+  $("billede-sheet-pick-label").textContent = url ? "Vælg nyt billede" : "Vælg billede";
+  $("billede-sheet-pick").disabled = busy;
+  $("billede-sheet-remove").disabled = busy;
+}
+
+async function updatePhoto(action){
+  renderPhotoSheet(true);
+  try {
+    const message = await action();
+    $("billede-sheet").close();
+    toast(message);
+  } catch (err) {
+    showError(err);
+    renderPhotoSheet(false);
   }
 }

@@ -24,6 +24,10 @@ function init(){
   }
   connect(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+  // Vis uventede fejl på skærmen – på en telefon er konsollen ikke synlig
+  window.addEventListener("error", event => showError(new Error(`Uventet fejl: ${event.message}`)));
+  window.addEventListener("unhandledrejection", event => showError(new Error(`Uventet fejl: ${event.reason?.message ?? event.reason}`)));
+
   hydrateIcons();
   setupSheets();
   setupTabs();

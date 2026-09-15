@@ -5,7 +5,9 @@
   width: 100%;
   max-width: 100%;
   max-height: calc(100dvh - var(--safe-top) - 24px);
-  margin: auto 0 0;
+  /* Forankret direkte til bunden i stedet for via auto-margin, så lave ark altid er synlige */
+  inset: auto 0 0 0;
+  margin: 0;
   padding: 0;
   overflow: hidden;
   border: 0;
@@ -18,7 +20,8 @@
 .sheet::backdrop{ background: rgb(10 12 10 / .45); animation: fade-in .2s ease; }
 .sheet-tall{ height: calc(100dvh - var(--safe-top) - 24px); }
 
-@keyframes sheet-up{ from{ transform: translateY(100%); } }
+/* Starter kun lidt under slutpositionen: arket er på skærmen, selv hvis animationen ikke afspilles */
+@keyframes sheet-up{ from{ transform: translateY(24px); } }
 @keyframes sheet-pop{ from{ opacity: 0; transform: translateY(12px) scale(.98); } }
 @keyframes fade-in{ from{ opacity: 0; } }
 
@@ -45,6 +48,9 @@
   background: var(--surface-3);
 }
 .sheet-title{ font-size: 1.3rem; font-weight: 800; }
+/* Titlen får fokus, når arket åbner (autofocus), så ingen knap får en fokusring */
+.sheet-title:focus,
+.scanner-title:focus{ outline: none; }
 .sheet-eyebrow{
   margin-bottom: 2px;
   color: var(--text-3);
@@ -73,6 +79,7 @@
   .sheet{
     width: min(560px, calc(100% - 48px));
     max-height: min(780px, calc(100dvh - 64px));
+    inset: 0;
     margin: auto;
     border-radius: var(--radius-xl);
   }

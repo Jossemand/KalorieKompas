@@ -67,3 +67,29 @@ create policy "allow all ugeplan" on ugeplan for all using (true) with check (tr
 
 drop policy if exists "allow all indstillinger" on indstillinger;
 create policy "allow all indstillinger" on indstillinger for all using (true) with check (true);
+
+-- ============================================================
+-- Billeder af madretter (tilføjet senere). Hele scriptet kan køres igen uden problemer.
+-- ============================================================
+alter table madretter add column if not exists billede_sti text; -- sti i storage-bucketten
+
+-- Offentlig bucket: billederne kan vises via en almindelig URL. Maks. 5 MB og kun billedformater
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+  values ('madret-billeder', 'madret-billeder', true, 5242880, array['image/jpeg', 'image/png', 'image/webp'])
+  on conflict (id) do update
+  set public = excluded.public,
+      file_size_limit = excluded.file_size_limit,
+      allowed_mime_types = excluded.allowed_mime_types;
+
+-- Samme åbne adgang som tabellerne: alle med anon key kan uploade og slette billeder i bucketten
+drop policy if exists "madret-billeder: læs" on storage.objects;
+create policy "madret-billeder: læs" on storage.objects
+  for select to anon, authenticated using (bucket_id = 'madret-billeder');
+
+drop policy if exists "madret-billeder: upload" on storage.objects;
+create policy "madret-billeder: upload" on storage.objects
+  for insert to anon, authenticated with check (bucket_id = 'madret-billeder');
+
+drop policy if exists "madret-billeder: slet" on storage.objects;
+create policy "madret-billeder: slet" on storage.objects
+  for delete to anon, authenticated using (bucket_id = 'madret-billeder');

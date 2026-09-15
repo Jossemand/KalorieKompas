@@ -308,6 +308,88 @@ mark{ background: none; color: var(--primary); font-weight: 800; }
 .option-meta{ overflow: hidden; color: var(--text-3); font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
 .option-kcal{ font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
+/* ---------- Billeder af madretter ---------- */
+.photo-field{ margin-bottom: 18px; }
+.photo-pick{
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 12px 14px;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-2);
+  text-align: left;
+  transition: background .15s, border-color .15s;
+}
+.photo-pick:hover{ border-color: var(--primary); background: var(--surface-2); }
+.photo-pick-icon{
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 14px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.photo-pick-text{ display: flex; flex-direction: column; line-height: 1.3; }
+.photo-pick-text strong{ color: var(--text); font-weight: 700; }
+.photo-pick-text span{ color: var(--text-3); font-size: .85rem; }
+
+.photo-preview,
+.photo-large{
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+.photo-preview{ aspect-ratio: 16 / 9; }
+.photo-large{ display: grid; place-items: center; aspect-ratio: 4 / 3; border-radius: var(--radius-lg); color: var(--text-3); }
+.photo-preview img,
+.photo-large img{ display: block; width: 100%; height: 100%; object-fit: cover; }
+.photo-actions{ position: absolute; right: 10px; bottom: 10px; display: flex; gap: 8px; }
+.photo-actions .btn{
+  min-height: 40px;
+  padding: 0 16px;
+  background: rgb(20 22 20 / .62);
+  color: #fff;
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
+.photo-empty{ display: flex; flex-direction: column; align-items: center; gap: 8px; font-weight: 600; }
+.photo-busy{
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgb(0 0 0 / .4);
+  color: #fff;
+}
+.photo-busy .spinner{ width: 32px; height: 32px; border-width: 3px; }
+.photo-sheet-foot .btn{ flex: 1; }
+
+/* Billedet fylder toppen af madretkortet helt ud til kanterne */
+.dish-photo{
+  display: block;
+  margin: -10px -8px 6px -16px;
+  padding: 0;
+  overflow: hidden;
+  aspect-ratio: 16 / 9;
+  border: 0;
+  border-radius: calc(var(--radius-lg) - 1px) calc(var(--radius-lg) - 1px) 0 0;
+  background: var(--surface-2);
+}
+.dish-photo img{ display: block; width: 100%; height: 100%; object-fit: cover; }
+.dish-actions{ display: flex; align-items: center; }
+
+.meal-photo,
+.option-photo{ overflow: hidden; background: var(--surface-2); }
+.meal-photo img,
+.option-photo img{ display: block; width: 100%; height: 100%; object-fit: cover; }
+.option-photo{ flex-shrink: 0; width: 44px; height: 44px; border-radius: 10px; }
+
 /* ---------- Opsætningsside ---------- */
 .setup{ width: calc(100% - 32px); max-width: 640px; margin: 48px auto; padding: 28px; }
 .setup h1{ margin-bottom: 8px; font-size: 1.4rem; }

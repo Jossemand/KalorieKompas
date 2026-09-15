@@ -49,6 +49,11 @@ er bygget endnu (se "Kendte begrænsninger" nedenfor).
    `lucide` og skrifttypen Plus Jakarta Sans via `@fontsource-variable`. Mobil: fanebar i
    bunden, bottom sheets, én dag ad gangen i ugeplanen. Fra 700 px: faner i toppen,
    centrerede dialoger og flere kolonner. Lyst/mørkt tema følger systemet.
+9. **Billeder af madretter i Supabase Storage.** Offentlig bucket `madret-billeder` og
+   kolonnen `madretter.billede_sti` (stien i bucketten, ikke en URL). Billeder skaleres
+   til maks. 1280 px og gemmes som JPEG i browseren før upload. Ny sti ved hver upload,
+   gamle filer slettes. Mangler kolonnen (setup.sql ikke kørt igen), virker appen stadig –
+   billedfunktionen er bare slået fra med en besked.
 
 ## Filer
 
@@ -60,7 +65,8 @@ er bygget endnu (se "Kendte begrænsninger" nedenfor).
   `madretter.js` (oversigt med filtre, bygger med ingredienssøgning), `ugeplan.js`
   (dagskort, valg af madret, kaloriemål).
 - `src/scanner.js` — kamera og stregkodeafkodning.
-- `src/lib/` — ikoner (Lucide), formatering/søgning, toasts/dialoger, faner, HTML-skabeloner.
+- `src/lib/` — ikoner (Lucide), formatering/søgning, toasts/dialoger, faner, HTML-skabeloner,
+  nedskalering af billeder før upload (`image.js`).
 - `src/styles/` — `base.css` (designtokens, lyst/mørkt tema), `layout.css`, `components.css`,
   `sheets.css`, `views.css`.
 - `public/favicon.svg` — app-ikon.
