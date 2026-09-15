@@ -1,0 +1,287 @@
+/* ============================================================
+   Genbrugelige komponenter
+   ============================================================ */
+
+/* ---------- Knapper ---------- */
+.btn{
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: var(--tap);
+  padding: 0 18px;
+  border: 1.5px solid transparent;
+  border-radius: 999px;
+  font-size: .95rem;
+  font-weight: 700;
+  white-space: nowrap;
+  transition: background .15s, border-color .15s, color .15s, transform .1s;
+}
+.btn:active{ transform: scale(.98); }
+.btn:disabled{ opacity: .55; cursor: not-allowed; transform: none; }
+.btn-primary{ background: var(--primary); color: var(--on-primary); box-shadow: var(--shadow-sm); }
+.btn-primary:hover:not(:disabled){ background: var(--primary-hover); }
+.btn-secondary{ background: var(--surface); border-color: var(--border); color: var(--text); }
+.btn-secondary:hover:not(:disabled){ background: var(--surface-2); }
+.btn-ghost{ background: transparent; color: var(--text-2); }
+.btn-ghost:hover:not(:disabled){ background: var(--surface-2); color: var(--text); }
+.btn-danger{ background: var(--danger); color: #fff; }
+.btn-block{ width: 100%; }
+.btn-lg{ min-height: 56px; border-radius: var(--radius-lg); font-size: 1rem; }
+
+.icon-btn{
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: var(--tap);
+  height: var(--tap);
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-2);
+  transition: background .15s, color .15s;
+}
+.icon-btn:hover{ background: var(--surface-2); color: var(--text); }
+.icon-btn-soft{ background: var(--surface-2); }
+.icon-btn-danger:hover{ background: var(--danger-soft); color: var(--danger); }
+
+/* ---------- Formularfelter ---------- */
+.field{ display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field + .field,
+.field + .field-grid,
+.field-grid + .field{ margin-top: 18px; }
+.field-label{ color: var(--text-2); font-size: .85rem; font-weight: 650; }
+.field-hint{ margin-top: 8px; color: var(--text-3); font-size: .82rem; }
+.field-grid{ display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+.input,
+.input-unit{
+  width: 100%;
+  min-height: 52px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  transition: border-color .15s, box-shadow .15s;
+}
+.input{ padding: 0 14px; font-size: 1rem; }
+.input:focus,
+.input-unit:focus-within{
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--primary) 18%, transparent);
+}
+.input::placeholder,
+.input-unit input::placeholder,
+.search input::placeholder{ color: var(--text-3); }
+
+.input-unit{ display: flex; align-items: center; padding-right: 14px; }
+.input-unit input{
+  flex: 1;
+  width: 0; /* ellers giver inputtets indbyggede bredde vandret overløb i smalle kolonner */
+  min-width: 0;
+  min-height: 49px;
+  padding: 0 8px 0 14px;
+  border: 0;
+  background: none;
+  font-size: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+.input-unit input:focus{ outline: none; }
+.input-unit > span{ color: var(--text-3); font-size: .9rem; font-weight: 600; }
+.input-unit-sm{ width: auto; min-height: 44px; padding-right: 12px; }
+.input-unit-sm input{ width: 5ch; min-height: 41px; padding-left: 10px; text-align: right; }
+.field.is-invalid .input,
+.field.is-invalid .input-unit{ border-color: var(--danger); }
+
+/* ---------- Søgefelt ---------- */
+.search{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  padding: 0 4px 0 14px;
+  border: 1.5px solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--text-3);
+  transition: border-color .15s, background .15s;
+}
+.search:focus-within{ border-color: var(--primary); background: var(--surface); }
+.search input{
+  flex: 1;
+  min-width: 0;
+  height: 48px;
+  border: 0;
+  background: none;
+  font-size: 1rem;
+  color: var(--text);
+}
+.search input:focus{ outline: none; }
+.search input::-webkit-search-cancel-button{ display: none; }
+.search .icon-btn{ width: 44px; height: 44px; }
+
+/* ---------- Filter-chips ---------- */
+.chips{
+  display: flex;
+  gap: 8px;
+  margin: 0 calc(var(--gutter) * -1) 18px;
+  padding: 2px var(--gutter);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.chips::-webkit-scrollbar{ display: none; }
+.chip{
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 0 16px;
+  border: 1.5px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: .9rem;
+  font-weight: 650;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.chip:hover{ color: var(--text); }
+.chip.is-active{ border-color: var(--text); background: var(--text); color: var(--bg); }
+.chip-count{ margin-left: 6px; opacity: .6; font-variant-numeric: tabular-nums; }
+
+/* ---------- Segmenteret valg ---------- */
+.segmented{ display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+@media (min-width: 440px){ .segmented{ grid-template-columns: repeat(4, 1fr); } }
+.segment{ position: relative; }
+.segment input{ position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.segment span{
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0 8px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: .88rem;
+  font-weight: 650;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.segment input:checked + span{ border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+.segment input:focus-visible + span{ outline: 3px solid color-mix(in srgb, var(--primary) 55%, transparent); outline-offset: 2px; }
+
+/* ---------- Kategori-badge ---------- */
+.badge{
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px 4px 8px;
+  border-radius: 999px;
+  font-size: .78rem;
+  font-weight: 700;
+}
+.badge[data-cat="Morgenmad"]{ color: var(--cat-morgenmad); background: var(--cat-morgenmad-soft); }
+.badge[data-cat="Frokost"]{ color: var(--cat-frokost); background: var(--cat-frokost-soft); }
+.badge[data-cat="Aftensmad"]{ color: var(--cat-aftensmad); background: var(--cat-aftensmad-soft); }
+.badge[data-cat="Snack"]{ color: var(--cat-snack); background: var(--cat-snack-soft); }
+
+/* ---------- Makronæringsstoffer ---------- */
+.macros{
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px 12px;
+  color: var(--text-2);
+  font-size: .82rem;
+  font-variant-numeric: tabular-nums;
+}
+.macro{ display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.macro::before{ content: ""; width: 7px; height: 7px; border-radius: 50%; }
+.macro-p::before{ background: var(--macro-p); }
+.macro-f::before{ background: var(--macro-f); }
+.macro-k::before{ background: var(--macro-k); }
+
+/* ---------- Kort ---------- */
+.card{
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---------- Tom tilstand ---------- */
+.empty{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 44px 24px;
+  color: var(--text-2);
+  text-align: center;
+}
+.empty-icon{
+  display: grid;
+  place-items: center;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 6px;
+  border-radius: 20px;
+  background: var(--surface-2);
+  color: var(--text-3);
+}
+.empty-title{ color: var(--text); font-size: 1.05rem; font-weight: 700; }
+.empty .btn{ margin-top: 10px; }
+
+/* ---------- Indlæsning ---------- */
+.skeleton{
+  border-radius: var(--radius-lg);
+  background: linear-gradient(90deg, var(--surface-2) 0%, var(--surface-3) 50%, var(--surface-2) 100%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+@keyframes shimmer{ to{ background-position: -200% 0; } }
+
+/* ---------- Fremskridtsbar ---------- */
+.progress{ height: 8px; overflow: hidden; border-radius: 999px; background: var(--surface-2); }
+.progress > span{
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+  transition: width .4s var(--ease);
+}
+.progress.is-over > span{ background: var(--danger); }
+
+/* ---------- Toasts (popover, så de vises oven på åbne dialoger) ---------- */
+.toast-region{
+  position: fixed;
+  inset: auto auto calc(var(--tabbar-h) + var(--safe-bottom) + 12px) 50%;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(420px, calc(100% - 32px));
+  margin: 0;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: transparent;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+@media (min-width: 700px){ .toast-region{ bottom: 24px; } }
+.toast{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 16px;
+  border-radius: var(--radius-md);
+  background: var(--text);
+  color: var(--bg);
+  box-shadow: var(--shadow-lg);
+  font-size: .92rem;
+  font-weight: 600;
+  pointer-events: auto;
+  animation: toast-in .25s var(--ease);
+}
+.toast.is-error{ background: var(--danger); color: #fff; }
+.toast.is-leaving{ animation: toast-out .2s ease forwards; }
+@keyframes toast-in{ from{ opacity: 0; transform: translateY(12px) scale(.98); } }
+@keyframes toast-out{ to{ opacity: 0; transform: translateY(8px); } }

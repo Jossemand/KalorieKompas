@@ -44,13 +44,26 @@ er bygget endnu (se "Kendte begrænsninger" nedenfor).
 7. **Repo og deployment:** privat GitHub-repo, deploy via **Vercel** (valgt af bruger)
    med auto-deploy on push til `main`. Supabase kan ikke selv hoste sitet, da Storage og
    Edge Functions serverer HTML som `text/plain`.
+8. **UI: mobil-først, intet komponentbibliotek.** Ionic/Shoelace blev fravalgt (tunge og
+   uden de mobilmønstre, der skal bruges). Egne komponenter i vanilla JS/CSS, ikoner fra
+   `lucide` og skrifttypen Plus Jakarta Sans via `@fontsource-variable`. Mobil: fanebar i
+   bunden, bottom sheets, én dag ad gangen i ugeplanen. Fra 700 px: faner i toppen,
+   centrerede dialoger og flere kolonner. Lyst/mørkt tema følger systemet.
 
 ## Filer
 
-- `index.html` — HTML for de tre faneblade (Ingredienser, Madretter, Ugeplan) og
-  scanner-modalen.
-- `src/main.js` — al app-logik: Supabase-kald, stregkode-scanner, Open Food Facts-opslag.
-- `src/style.css` — styling.
+- `index.html` — app-skal, de tre visninger og dialoger (sheets, bekræftelse, scanner).
+- `src/main.js` — starter appen: styles, Supabase-forbindelse og opsætning af visninger.
+- `src/state.js` — fælles data (`store`) og alle Supabase-kald. Visningerne kalder kun
+  funktionerne herfra og gentegner via `subscribe()`.
+- `src/views/` — `ingredienser.js` (liste, søgning, formular, Open Food Facts-opslag),
+  `madretter.js` (oversigt med filtre, bygger med ingredienssøgning), `ugeplan.js`
+  (dagskort, valg af madret, kaloriemål).
+- `src/scanner.js` — kamera og stregkodeafkodning.
+- `src/lib/` — ikoner (Lucide), formatering/søgning, toasts/dialoger, faner, HTML-skabeloner.
+- `src/styles/` — `base.css` (designtokens, lyst/mørkt tema), `layout.css`, `components.css`,
+  `sheets.css`, `views.css`.
+- `public/favicon.svg` — app-ikon.
 - `vite.config.js` — stopper `vite build`, hvis Supabase-variablerne mangler.
 - `supabase/setup.sql` — SQL til at oprette alle tabeller + RLS-policies. Skal køres i
   Supabase SQL Editor på det NYE Supabase-projekt (køres ikke automatisk).
@@ -102,7 +115,8 @@ Env-variabler holder den ude af Git, men beskytter ikke data. Det gør kun RLS.
   dette er noget de vil prioritere nu eller senere.
 - **Ingen automatiserede tests.**
 - **Ingen CI/CD er sat op endeles** — det er formentlig det næste skridt (se nedenfor).
-- **Ingen offline-håndtering / fejl-UI ud over simple `alert()`-kald.**
+- **Ingen offline-håndtering.** Fejl vises som toasts, men der er ingen kø eller genforsøg.
+- **Madretter kan ikke redigeres** – kun oprettes og slettes.
 - **iPhones med flere linser kan ikke fokusere helt tæt på.** Stregkoden skal holdes
   ca. 15–20 cm fra kameraet (står også som hjælpetekst i scanneren).
 - Appen er **ikke testet i en rigtig browser** endnu (kun syntax-valideret). Første

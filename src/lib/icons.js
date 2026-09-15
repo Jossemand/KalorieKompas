@@ -1,0 +1,46 @@
+import {
+  createElement,
+  CalendarDays, Carrot, Check, ChevronRight, CircleAlert, CircleCheck, Coffee, Compass, Cookie,
+  CookingPot, Keyboard, Minus, Plus, Sandwich, ScanBarcode, Search, SearchX, Soup, Target, Trash2, X,
+} from "lucide";
+
+// Kun de ikoner, appen bruger, kommer med i bundlen
+const ICONS = {
+  "calendar-days": CalendarDays,
+  carrot: Carrot,
+  check: Check,
+  "chevron-right": ChevronRight,
+  "circle-alert": CircleAlert,
+  "circle-check": CircleCheck,
+  coffee: Coffee,
+  compass: Compass,
+  cookie: Cookie,
+  "cooking-pot": CookingPot,
+  keyboard: Keyboard,
+  minus: Minus,
+  plus: Plus,
+  sandwich: Sandwich,
+  "scan-barcode": ScanBarcode,
+  search: Search,
+  "search-x": SearchX,
+  soup: Soup,
+  target: Target,
+  trash: Trash2,
+  x: X,
+};
+
+export const MEAL_ICONS = { Morgenmad: "coffee", Frokost: "sandwich", Aftensmad: "soup", Snack: "cookie" };
+
+export function icon(name, size = 20){
+  const svg = createElement(ICONS[name], { width: size, height: size, "aria-hidden": "true" });
+  svg.classList.add("icon");
+  return svg.outerHTML;
+}
+
+// Indsætter SVG-ikoner i elementer med data-icon="navn" i den statiske HTML
+export function hydrateIcons(root = document){
+  root.querySelectorAll("[data-icon]").forEach(el => {
+    el.insertAdjacentHTML("afterbegin", icon(el.dataset.icon));
+    el.removeAttribute("data-icon");
+  });
+}

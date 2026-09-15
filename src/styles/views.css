@@ -1,0 +1,322 @@
+/* ============================================================
+   Visninger: Ingredienser, Madretter, Ugeplan + opsætningsside
+   ============================================================ */
+
+.fieldset{ min-width: 0; margin: 18px 0 0; padding: 0; border: 0; }
+.fieldset legend{ margin-bottom: 6px; padding: 0; }
+.field-grid > .field + .field{ margin-top: 0; }
+.list-search{ margin-bottom: 14px; }
+.list-meta{ margin: 14px 2px 0; color: var(--text-3); font-size: .85rem; }
+
+@media (max-width: 699px){
+  .view-actions-stack{ grid-template-columns: 1fr; }
+  .btn-hero{ order: -1; min-height: 56px; border-radius: var(--radius-lg); font-size: 1rem; }
+}
+
+/* ---------- Ingredienser ---------- */
+/* minmax(0, 1fr): lange navne må ikke gøre kolonnen bredere end skærmen */
+.item-list{ display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+@media (min-width: 900px){ .item-list{ grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+.item{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 76px;
+  padding: 12px 6px 12px 16px;
+}
+.item-main{ display: flex; flex: 1; flex-direction: column; gap: 4px; min-width: 0; }
+.item-title{
+  display: -webkit-box;
+  overflow: hidden;
+  font-weight: 700;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.item-kcal{ display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; }
+.item-kcal strong{ font-size: 1.15rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.item-kcal span{ color: var(--text-3); font-size: .72rem; font-weight: 600; white-space: nowrap; }
+.item-skeleton{ height: 76px; }
+
+/* Status for opslag i Open Food Facts */
+.lookup{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: .9rem;
+  font-weight: 600;
+}
+.lookup[data-state="found"]{ background: var(--success-soft); color: var(--success); }
+.lookup[data-state="missing"],
+.lookup[data-state="error"]{ background: var(--warn-soft); color: var(--warn); }
+.lookup-code{ margin-left: auto; font-size: .8rem; opacity: .8; font-variant-numeric: tabular-nums; }
+.spinner{
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  border: 2.5px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+}
+@keyframes spin{ to{ transform: rotate(360deg); } }
+
+/* ---------- Madretter ---------- */
+.dish-grid{ display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+@media (min-width: 640px){ .dish-grid{ grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1000px){ .dish-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+.dish{ display: flex; flex-direction: column; gap: 6px; padding: 10px 8px 16px 16px; }
+.dish-top{ display: flex; align-items: center; justify-content: space-between; }
+.dish-title{ padding-right: 8px; font-size: 1.12rem; font-weight: 750; }
+.dish-ingredients{
+  display: -webkit-box;
+  overflow: hidden;
+  padding-right: 8px;
+  color: var(--text-2);
+  font-size: .88rem;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.dish-foot{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px 12px;
+  margin-top: auto;
+  padding: 12px 8px 0 0;
+  border-top: 1px dashed var(--border);
+}
+.dish-kcal{ color: var(--text-3); font-size: .85rem; font-weight: 650; }
+.dish-kcal strong{ margin-right: 2px; color: var(--text); font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.dish-skeleton{ height: 156px; }
+
+/* Byggeren: søgeresultater */
+.results{
+  margin-top: 8px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
+}
+.result{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 56px;
+  padding: 8px 12px 8px 14px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: none;
+  text-align: left;
+}
+.results li:first-child > .result{ border-top: 0; }
+.result:hover,
+.result.is-highlighted{ background: var(--surface-2); }
+.result-name{ flex: 1; min-width: 0; font-weight: 600; }
+mark{ background: none; color: var(--primary); font-weight: 800; }
+.result-kcal{ color: var(--text-3); font-size: .82rem; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.result-add{
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+.result.is-added .result-add{ background: var(--primary); color: var(--on-primary); }
+.results-empty{ padding: 16px 14px; color: var(--text-2); font-size: .9rem; }
+
+/* Byggeren: ingredienser i retten */
+.section-label{
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin: 24px 2px 8px;
+  color: var(--text-2);
+  font-size: .85rem;
+  font-weight: 650;
+}
+.pending-list{ display: flex; flex-direction: column; gap: 8px; }
+.pending{
+  display: grid;
+  grid-template-areas: "info remove" "stepper stepper";
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 6px 8px;
+  padding: 10px 6px 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  animation: pending-in .25s var(--ease);
+}
+@media (min-width: 520px){
+  .pending{ grid-template-areas: "info stepper remove"; grid-template-columns: 1fr auto auto; padding-block: 8px; }
+}
+@keyframes pending-in{ from{ opacity: 0; transform: translateY(-4px); } }
+.pending-info{ grid-area: info; min-width: 0; }
+.pending-name{ font-weight: 650; }
+.pending-kcal{ color: var(--text-3); font-size: .85rem; font-variant-numeric: tabular-nums; }
+.pending .stepper{ grid-area: stepper; }
+.pending [data-remove]{ grid-area: remove; }
+.stepper{ display: flex; align-items: center; gap: 8px; }
+.pending-empty{
+  padding: 20px 16px;
+  border: 1.5px dashed var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text-3);
+  font-size: .9rem;
+  text-align: center;
+}
+.summary{ display: flex; flex: 1; flex-direction: column; min-width: 0; line-height: 1.2; }
+.summary-kcal{ font-size: 1.35rem; font-weight: 800; }
+.summary-kcal small{ color: var(--text-3); font-size: .85rem; font-weight: 650; }
+.summary .macros{ margin-top: 3px; font-size: .78rem; }
+
+/* ---------- Ugeplan ---------- */
+.goal{ display: flex; align-items: center; gap: 12px; padding: 10px 10px 10px 12px; cursor: text; }
+.goal-icon,
+.meal-icon{
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+}
+.goal-icon{ background: var(--primary-soft); color: var(--primary); }
+.goal-text{ display: flex; flex: 1; flex-direction: column; line-height: 1.25; }
+.goal-label{ font-weight: 700; }
+.goal-sub{ color: var(--text-3); font-size: .8rem; }
+
+.day-strip{ display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-bottom: 14px; }
+.day-chip{
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  min-height: 58px;
+  padding: 10px 0;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: .82rem;
+  font-weight: 700;
+}
+.day-chip.is-today{ border-color: var(--primary); color: var(--primary); }
+.day-chip.is-active{ border-color: var(--text); background: var(--text); color: var(--bg); }
+.day-chip-bar{ width: 60%; height: 4px; overflow: hidden; border-radius: 99px; background: var(--surface-3); }
+.day-chip-bar > span{ display: block; height: 100%; background: var(--primary); }
+.day-chip.is-active .day-chip-bar{ background: color-mix(in srgb, var(--bg) 25%, transparent); }
+.day-chip.is-active .day-chip-bar > span{ background: var(--bg); }
+.day-chip-bar.is-over > span,
+.day-chip.is-active .day-chip-bar.is-over > span{ background: var(--danger); }
+@media (min-width: 700px){ .day-strip{ display: none; } }
+
+.week{ display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+@media (max-width: 699px){ .day:not(.is-active){ display: none; } }
+@media (min-width: 700px){ .week{ grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1000px){ .week{ grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); } }
+
+.day{ display: flex; flex-direction: column; gap: 14px; padding: 16px; }
+.day.is-today{ border-color: color-mix(in srgb, var(--primary) 55%, var(--border)); }
+.day-head{ display: flex; flex-direction: column; gap: 8px; }
+.day-title-row{ display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.day-name{ font-size: 1.15rem; font-weight: 800; }
+.today-pill{
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: .72rem;
+  font-weight: 750;
+}
+.day-total{ display: flex; align-items: baseline; gap: 6px; font-variant-numeric: tabular-nums; }
+.day-total strong{ font-size: 1.6rem; font-weight: 800; letter-spacing: -.02em; }
+.day-total span{ color: var(--text-3); font-size: .85rem; font-weight: 600; }
+.day-diff{ color: var(--text-2); font-size: .82rem; font-weight: 650; }
+.day-diff.is-over{ color: var(--danger); }
+.day-diff.is-under{ color: var(--success); }
+
+.meals{ display: flex; flex-direction: column; gap: 8px; }
+.meal{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 64px;
+  padding: 10px 8px 10px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  text-align: left;
+  transition: background .15s, border-color .15s;
+}
+.meal:hover{ background: var(--surface-2); }
+.meal.is-empty{ border-style: dashed; background: transparent; }
+.meal-icon[data-cat="Morgenmad"]{ color: var(--cat-morgenmad); background: var(--cat-morgenmad-soft); }
+.meal-icon[data-cat="Frokost"]{ color: var(--cat-frokost); background: var(--cat-frokost-soft); }
+.meal-icon[data-cat="Aftensmad"]{ color: var(--cat-aftensmad); background: var(--cat-aftensmad-soft); }
+.meal-icon[data-cat="Snack"]{ color: var(--cat-snack); background: var(--cat-snack-soft); }
+.meal-text{ display: flex; flex: 1; flex-direction: column; min-width: 0; line-height: 1.25; }
+.meal-top{ display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.meal-label{ color: var(--text-3); font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+/* Navnet får hele bredden og må fylde to linjer, før det afkortes */
+.meal-name{
+  display: -webkit-box;
+  overflow: hidden;
+  font-weight: 650;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.meal.is-empty .meal-name{ color: var(--text-3); font-weight: 600; }
+.meal-kcal{ font-size: .92rem; font-weight: 750; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.meal-kcal small{ color: var(--text-3); font-size: .72rem; font-weight: 600; }
+.meal-chevron{ color: var(--text-3); }
+
+/* Valg af madret til et måltid */
+.options{ display: flex; flex-direction: column; gap: 8px; }
+.option{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  min-height: 60px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  text-align: left;
+}
+.option:hover{ background: var(--surface-2); }
+.option.is-selected{ border-color: var(--primary); background: var(--primary-soft); }
+.option-radio{ width: 22px; height: 22px; flex-shrink: 0; border: 2px solid var(--border); border-radius: 50%; }
+.option.is-selected .option-radio{ border: 7px solid var(--primary); }
+.option-text{ display: flex; flex: 1; flex-direction: column; min-width: 0; }
+.option-name{ font-weight: 650; }
+.option-meta{ overflow: hidden; color: var(--text-3); font-size: .82rem; text-overflow: ellipsis; white-space: nowrap; }
+.option-kcal{ font-weight: 700; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* ---------- Opsætningsside ---------- */
+.setup{ width: calc(100% - 32px); max-width: 640px; margin: 48px auto; padding: 28px; }
+.setup h1{ margin-bottom: 8px; font-size: 1.4rem; }
+.setup p{ margin-top: 10px; color: var(--text-2); }
+.setup pre{
+  margin: 14px 0 0;
+  padding: 14px;
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+  font-size: .85rem;
+}

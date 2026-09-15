@@ -1,0 +1,160 @@
+/* ============================================================
+   Dialoger: bottom sheet på mobil, centreret dialog på større skærme
+   ============================================================ */
+.sheet{
+  width: 100%;
+  max-width: 100%;
+  max-height: calc(100dvh - var(--safe-top) - 24px);
+  margin: auto 0 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-lg);
+}
+.sheet[open]{ display: flex; flex-direction: column; animation: sheet-up .32s var(--ease); }
+.sheet::backdrop{ background: rgb(10 12 10 / .45); animation: fade-in .2s ease; }
+.sheet-tall{ height: calc(100dvh - var(--safe-top) - 24px); }
+
+@keyframes sheet-up{ from{ transform: translateY(100%); } }
+@keyframes sheet-pop{ from{ opacity: 0; transform: translateY(12px) scale(.98); } }
+@keyframes fade-in{ from{ opacity: 0; } }
+
+.sheet-body{ display: flex; flex: 1; flex-direction: column; min-height: 0; }
+
+.sheet-head{
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 24px 12px 8px 20px;
+}
+/* Greb øverst – signalerer at det er et ark */
+.sheet-head::before{
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  width: 40px;
+  height: 5px;
+  margin-left: -20px;
+  border-radius: 999px;
+  background: var(--surface-3);
+}
+.sheet-title{ font-size: 1.3rem; font-weight: 800; }
+.sheet-eyebrow{
+  margin-bottom: 2px;
+  color: var(--text-3);
+  font-size: .75rem;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+.sheet-scroll{
+  flex: 1;
+  min-height: 0;
+  padding: 8px 20px 24px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.sheet-foot{
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px calc(12px + var(--safe-bottom));
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+}
+
+@media (min-width: 700px){
+  .sheet{
+    width: min(560px, calc(100% - 48px));
+    max-height: min(780px, calc(100dvh - 64px));
+    margin: auto;
+    border-radius: var(--radius-xl);
+  }
+  .sheet[open]{ animation: sheet-pop .22s var(--ease); }
+  .sheet-tall{ height: min(780px, calc(100dvh - 64px)); }
+  .sheet-head{ padding: 20px 14px 8px 24px; }
+  .sheet-head::before{ display: none; }
+  .sheet-scroll{ padding: 8px 24px 24px; }
+  .sheet-foot{ padding: 14px 24px; }
+}
+
+/* ---------- Bekræftelse ---------- */
+.sheet-confirm .sheet-scroll{ padding-top: 0; color: var(--text-2); }
+.sheet-confirm .sheet-foot{ border-top: 0; }
+.sheet-confirm .sheet-foot .btn{ flex: 1; }
+@media (min-width: 700px){ .sheet-confirm{ width: min(420px, calc(100% - 48px)); } }
+
+/* ============================================================
+   Scanner: fuldskærm på mobil
+   ============================================================ */
+.scanner{
+  width: 100vw;
+  max-width: none;
+  height: 100dvh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  background: #000;
+  color: #fff;
+}
+.scanner[open]{ display: block; }
+.scanner::backdrop{ background: #000; }
+.scanner video{ position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+
+/* Sigteramme; skyggen gør resten af billedet mørkere. Hele billedet scannes dog */
+.scanner-target{
+  position: absolute;
+  top: 45%;
+  left: 50%;
+  width: min(80vw, 380px);
+  aspect-ratio: 16 / 9;
+  border: 3px solid rgb(255 255 255 / .9);
+  border-radius: 20px;
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / .4);
+  transform: translate(-50%, -50%);
+}
+.scanner-line{
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: 10%;
+  height: 2px;
+  border-radius: 2px;
+  background: #7CE0A8;
+  box-shadow: 0 0 12px #7CE0A8;
+  animation: scan-line 1.8s ease-in-out infinite alternate;
+}
+@keyframes scan-line{ to{ top: 88%; } }
+
+.scanner-overlay{
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: calc(var(--safe-top) + 12px) 16px calc(var(--safe-bottom) + 24px);
+}
+.scanner-top{ display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.scanner-title{ padding-left: 8px; font-size: 1.05rem; font-weight: 700; }
+.scanner .icon-btn{ background: rgb(255 255 255 / .18); color: #fff; }
+.scanner-bottom{ display: flex; flex-direction: column; align-items: center; gap: 16px; text-align: center; }
+.scanner-hint{ max-width: 300px; color: rgb(255 255 255 / .92); font-size: .95rem; font-weight: 500; }
+.scanner .btn-secondary{ border-color: transparent; background: rgb(255 255 255 / .18); color: #fff; }
+
+@media (min-width: 700px){
+  .scanner{
+    width: min(760px, calc(100% - 48px));
+    height: min(600px, calc(100dvh - 64px));
+    margin: auto;
+    border-radius: var(--radius-xl);
+  }
+  .scanner::backdrop{ background: rgb(10 12 10 / .7); }
+}

@@ -1,0 +1,140 @@
+/* ============================================================
+   Designtokens – lyst tema som standard, mørkt via systemindstilling
+   ============================================================ */
+:root{
+  color-scheme: light dark;
+  --font: "Plus Jakarta Sans Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  --bg: #F5F3EE;
+  --surface: #FFFFFF;
+  --surface-2: #EFECE6;
+  --surface-3: #E6E2D9;
+  --border: #E2DDD3;
+  --text: #1D201C;
+  --text-2: #5E645C;
+  --text-3: #8B9087;
+
+  --primary: #2F6B4F;
+  --primary-hover: #265A42;
+  --primary-soft: #E2EEE6;
+  --on-primary: #FFFFFF;
+
+  --danger: #C2412D;
+  --danger-soft: #FAE8E4;
+  --warn: #A86A12;
+  --warn-soft: #FBF0DC;
+  --success: #2F7A4F;
+  --success-soft: #E2F1E7;
+
+  --macro-p: #3F74C4;
+  --macro-f: #C98A1B;
+  --macro-k: #8E5FC4;
+
+  --cat-morgenmad: #A86A12;  --cat-morgenmad-soft: #FBF0DC;
+  --cat-frokost: #2F7A4F;    --cat-frokost-soft: #E2F1E7;
+  --cat-aftensmad: #B4472F;  --cat-aftensmad-soft: #FAE6E0;
+  --cat-snack: #7A57B8;      --cat-snack-soft: #EFE8F9;
+
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+
+  --shadow-sm: 0 1px 2px rgb(29 32 28 / 0.06), 0 1px 3px rgb(29 32 28 / 0.04);
+  --shadow-md: 0 4px 16px rgb(29 32 28 / 0.08);
+  --shadow-lg: 0 18px 48px rgb(29 32 28 / 0.18);
+
+  --tap: 48px; /* mindste touch-mål på mobil */
+  --gutter: 16px;
+  --tabbar-h: 68px;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg: #111311;
+    --surface: #1A1D1A;
+    --surface-2: #232723;
+    --surface-3: #2C312C;
+    --border: #2E332E;
+    --text: #ECEFE9;
+    --text-2: #A9B0A5;
+    --text-3: #7F867B;
+
+    --primary: #72C298;
+    --primary-hover: #8AD0AB;
+    --primary-soft: #1E3328;
+    --on-primary: #0D1A12;
+
+    --danger: #F08D78;
+    --danger-soft: #3A221C;
+    --warn: #E6B55C;
+    --warn-soft: #3A2E17;
+    --success: #72C298;
+    --success-soft: #1E3328;
+
+    --macro-p: #7FA8E8;
+    --macro-f: #E6B55C;
+    --macro-k: #B795E8;
+
+    --cat-morgenmad: #E6B55C;  --cat-morgenmad-soft: #3A2E17;
+    --cat-frokost: #72C298;    --cat-frokost-soft: #1E3328;
+    --cat-aftensmad: #F08D78;  --cat-aftensmad-soft: #3A221C;
+    --cat-snack: #B795E8;      --cat-snack-soft: #2C2340;
+
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+    --shadow-md: 0 4px 16px rgb(0 0 0 / 0.35);
+    --shadow-lg: 0 18px 48px rgb(0 0 0 / 0.55);
+  }
+}
+
+@media (min-width: 700px){
+  :root{ --gutter: 28px; --tap: 44px; }
+}
+
+/* ============================================================
+   Reset og grundtypografi
+   ============================================================ */
+*, *::before, *::after{ box-sizing: border-box; }
+html{ -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html:has(dialog[open]){ overflow: hidden; }
+
+body{
+  margin: 0;
+  min-height: 100dvh;
+  font-family: var(--font);
+  font-size: 16px; /* 16px i inputs forhindrer iOS i at zoome ind */
+  line-height: 1.45;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1, h2, h3, p{ margin: 0; }
+h1, h2, h3{ line-height: 1.2; letter-spacing: -0.02em; }
+button, input, select, textarea{ font: inherit; color: inherit; }
+button{ cursor: pointer; }
+ul{ list-style: none; margin: 0; padding: 0; }
+[hidden]{ display: none !important; }
+
+.num{ font-variant-numeric: tabular-nums; }
+.icon{ display: block; flex-shrink: 0; }
+.visually-hidden{
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip-path: inset(50%); white-space: nowrap;
+}
+
+:focus-visible{
+  outline: 3px solid color-mix(in srgb, var(--primary) 55%, transparent);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce){
+  *, *::before, *::after{
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

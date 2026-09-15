@@ -1,0 +1,137 @@
+/* ============================================================
+   App-skal: topbar, faner og indhold
+   Mobil: fanebar i bunden (tommelfingervenlig). Fra 700px: faner i toppen.
+   ============================================================ */
+.app{ min-height: 100dvh; }
+
+.topbar{
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: calc(var(--safe-top) + 12px) var(--gutter) 12px;
+  background: var(--bg);
+  border-bottom: 1px solid transparent;
+  transition: border-color .2s;
+}
+.topbar.is-scrolled{ border-bottom-color: var(--border); }
+
+.brand{
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.brand-mark{
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.tab{
+  display: flex;
+  align-items: center;
+  border: 0;
+  background: none;
+  font-weight: 650;
+}
+.tab-icon{ display: grid; place-items: center; }
+
+.content{
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 4px var(--gutter) calc(var(--tabbar-h) + var(--safe-bottom) + 32px);
+}
+
+.view{ display: none; }
+.view.is-active{ display: block; animation: view-in .25s var(--ease); }
+@keyframes view-in{
+  from{ opacity: 0; transform: translateY(6px); }
+  to{ opacity: 1; transform: none; }
+}
+
+.view-head{
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 8px 0 20px;
+}
+.view-title{ font-size: 1.85rem; font-weight: 800; }
+.view-sub{ margin-top: 4px; color: var(--text-2); font-size: .95rem; }
+.view-actions{ display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.view-actions > :only-child{ grid-column: 1 / -1; }
+
+/* ---------- Mobil ---------- */
+@media (max-width: 699px){
+  .tabs{
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 30;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    height: calc(var(--tabbar-h) + var(--safe-bottom));
+    padding: 6px 8px var(--safe-bottom);
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+  .tab{
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    color: var(--text-3);
+    font-size: .75rem;
+  }
+  .tab-icon{
+    width: 60px;
+    height: 32px;
+    border-radius: 999px;
+    transition: background .2s var(--ease), color .2s;
+  }
+  .tab.is-active{ color: var(--text); }
+  .tab.is-active .tab-icon{ background: var(--primary-soft); color: var(--primary); }
+}
+
+/* ---------- Tablet og desktop ---------- */
+@media (min-width: 700px){
+  .topbar{ padding-block: calc(var(--safe-top) + 16px) 16px; }
+  .brand{ font-size: 1.15rem; }
+
+  .tabs{
+    display: flex;
+    gap: 4px;
+    padding: 4px;
+    border-radius: 999px;
+    background: var(--surface-2);
+  }
+  .tab{
+    gap: 8px;
+    padding: 8px 18px 8px 12px;
+    border-radius: 999px;
+    color: var(--text-2);
+    font-size: .92rem;
+    transition: background .2s, color .2s, box-shadow .2s;
+  }
+  .tab:hover{ color: var(--text); }
+  .tab.is-active{ background: var(--surface); color: var(--text); box-shadow: var(--shadow-sm); }
+  .tab.is-active .tab-icon{ color: var(--primary); }
+
+  .content{ padding-bottom: 64px; }
+  .view-head{
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin: 20px 0 24px;
+  }
+  .view-title{ font-size: 2.1rem; }
+  .view-actions{ display: flex; }
+}

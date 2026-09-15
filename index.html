@@ -2,149 +2,227 @@
 <html lang="da">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Mad &amp; Kalorier</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;900&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#F5F3EE" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111311" media="(prefers-color-scheme: dark)">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<title>KalorieKompas</title>
 </head>
 <body>
 
-<div id="setup-banner" hidden>
-  <h2>Konfiguration mangler</h2>
-  <p>Supabase-URL og anon key blev ikke fundet. De læses fra miljøvariablerne <code style="display:inline">VITE_SUPABASE_URL</code> og <code style="display:inline">VITE_SUPABASE_ANON_KEY</code>. Lokalt:</p>
-  <code>cp .env.example .env   # udfyld værdierne
-npm run dev</code>
-  <p>På Vercel sættes de to variabler under Project Settings → Environment Variables. Værdierne findes under Project Settings → API Keys i Supabase. Kør også <code style="display:inline">supabase/setup.sql</code> i SQL-editoren, så tabellerne findes.</p>
+<div id="setup-banner" class="setup card" hidden>
+  <h1>Konfiguration mangler</h1>
+  <p>Supabase-URL og anon key blev ikke fundet. De læses fra miljøvariablerne <code>VITE_SUPABASE_URL</code> og <code>VITE_SUPABASE_ANON_KEY</code>. Lokalt:</p>
+  <pre>cp .env.example .env   # udfyld værdierne
+npm run dev</pre>
+  <p>På Vercel sættes de to variabler under Project Settings → Environment Variables. Kør også <code>supabase/setup.sql</code> i Supabase' SQL Editor, så tabellerne findes.</p>
 </div>
 
-<div id="app" hidden>
-  <header>
-    <h1>Mad &amp; Kalorier</h1>
-    <span class="tagline">Din egen ingrediens- og madplansdatabase</span>
+<div id="app" class="app" hidden>
+  <header class="topbar" id="topbar">
+    <div class="brand"><span class="brand-mark" data-icon="compass"></span>KalorieKompas</div>
+    <nav class="tabs" aria-label="Sektioner">
+      <button type="button" class="tab is-active" data-tab="ingredienser" aria-current="page"><span class="tab-icon" data-icon="carrot"></span>Ingredienser</button>
+      <button type="button" class="tab" data-tab="madretter"><span class="tab-icon" data-icon="cooking-pot"></span>Madretter</button>
+      <button type="button" class="tab" data-tab="ugeplan"><span class="tab-icon" data-icon="calendar-days"></span>Ugeplan</button>
+    </nav>
   </header>
 
-  <nav>
-    <button class="tab-btn active" data-tab="ingredienser">Ingredienser</button>
-    <button class="tab-btn" data-tab="madretter">Madretter</button>
-    <button class="tab-btn" data-tab="ugeplan">Ugeplan</button>
-  </nav>
-
-  <main>
+  <main class="content">
 
     <!-- INGREDIENSER -->
-    <section id="tab-ingredienser" class="active">
-      <h2>Tilføj ingrediens</h2>
-      <p class="sub">Scan en stregkode for at slå produktet op i Open Food Facts, eller udfyld manuelt.</p>
-
-      <div class="panel">
-        <div class="btn-row" style="margin-bottom:16px;">
-          <button type="button" class="secondary" id="btn-scan">Scan stregkode</button>
+    <section class="view is-active" id="view-ingredienser" aria-labelledby="ingredienser-title">
+      <div class="view-head">
+        <div>
+          <h1 class="view-title" id="ingredienser-title">Ingredienser</h1>
+          <p class="view-sub" id="ingredienser-sub">Scan en vare eller tilføj den manuelt</p>
         </div>
-        <form id="ingrediens-form">
-          <input type="hidden" id="ingrediens-barcode">
-          <div class="field">
-            <label for="ingrediens-navn">Navn</label>
-            <input id="ingrediens-navn" required>
-          </div>
-          <div class="row-fields">
-            <div class="field">
-              <label for="ingrediens-kcal">Kcal / 100g</label>
-              <input id="ingrediens-kcal" type="number" step="0.1" required>
-            </div>
-            <div class="field">
-              <label for="ingrediens-protein">Protein / 100g</label>
-              <input id="ingrediens-protein" type="number" step="0.1">
-            </div>
-            <div class="field">
-              <label for="ingrediens-fedt">Fedt / 100g</label>
-              <input id="ingrediens-fedt" type="number" step="0.1">
-            </div>
-            <div class="field">
-              <label for="ingrediens-kulhydrat">Kulhydrat / 100g</label>
-              <input id="ingrediens-kulhydrat" type="number" step="0.1">
-            </div>
-          </div>
-          <button type="submit" class="primary">Gem ingrediens</button>
-        </form>
+        <div class="view-actions view-actions-stack">
+          <button type="button" class="btn btn-secondary" id="btn-add-ingrediens"><span data-icon="plus"></span>Tilføj manuelt</button>
+          <button type="button" class="btn btn-primary btn-hero" id="btn-scan"><span data-icon="scan-barcode"></span>Scan stregkode</button>
+        </div>
       </div>
-
-      <h2>Dine ingredienser</h2>
-      <ul class="list" id="ingredienser-list"></ul>
+      <div class="search list-search">
+        <span data-icon="search"></span>
+        <input type="search" id="ingredienser-search" placeholder="Søg i ingredienser" aria-label="Søg i ingredienser" autocomplete="off" enterkeyhint="search">
+        <button type="button" class="icon-btn" id="ingredienser-search-clear" aria-label="Ryd søgning" hidden><span data-icon="x"></span></button>
+      </div>
+      <ul class="item-list" id="ingredienser-list" aria-busy="true">
+        <li class="skeleton item-skeleton"></li>
+        <li class="skeleton item-skeleton"></li>
+        <li class="skeleton item-skeleton"></li>
+        <li class="skeleton item-skeleton"></li>
+      </ul>
     </section>
 
     <!-- MADRETTER -->
-    <section id="tab-madretter">
-      <h2>Byg en madret</h2>
-      <p class="sub">Sæt ingredienser og mængder sammen til en ret. Kalorier beregnes automatisk.</p>
-
-      <div class="panel">
-        <div class="row-fields" style="grid-template-columns:2fr 1fr;">
-          <div class="field">
-            <label for="madret-navn">Navn på madret</label>
-            <input id="madret-navn">
-          </div>
-          <div class="field">
-            <label for="madret-kategori">Kategori</label>
-            <select id="madret-kategori">
-              <option>Morgenmad</option>
-              <option>Frokost</option>
-              <option>Aftensmad</option>
-              <option>Snack</option>
-            </select>
-          </div>
+    <section class="view" id="view-madretter" aria-labelledby="madretter-title">
+      <div class="view-head">
+        <div>
+          <h1 class="view-title" id="madretter-title">Madretter</h1>
+          <p class="view-sub" id="madretter-sub">Retter bygget af dine ingredienser</p>
         </div>
-
-        <div class="ingred-row">
-          <div class="field" style="margin-bottom:0;">
-            <label>Ingrediens</label>
-            <select id="madret-ingrediens-select"></select>
-          </div>
-          <div class="field" style="margin-bottom:0;">
-            <label>Mængde (g)</label>
-            <input id="madret-maengde" type="number" step="1" value="100">
-          </div>
-          <div></div>
-          <button type="button" class="secondary" id="btn-add-ingrediens">Tilføj</button>
-        </div>
-
-        <div class="added-list" id="madret-added-list"></div>
-        <div class="total-line" id="madret-total-line">Total: 0 kcal</div>
-
-        <div class="btn-row" style="margin-top:16px;">
-          <button type="button" class="primary" id="btn-save-madret">Gem madret</button>
+        <div class="view-actions">
+          <button type="button" class="btn btn-primary" id="btn-new-madret"><span data-icon="plus"></span>Ny madret</button>
         </div>
       </div>
-
-      <h2>Dine madretter</h2>
-      <div id="madretter-list"></div>
+      <div class="chips" id="madret-filter" role="group" aria-label="Filtrer efter kategori"></div>
+      <div class="dish-grid" id="madretter-list" aria-busy="true">
+        <div class="skeleton dish-skeleton"></div>
+        <div class="skeleton dish-skeleton"></div>
+        <div class="skeleton dish-skeleton"></div>
+      </div>
     </section>
 
     <!-- UGEPLAN -->
-    <section id="tab-ugeplan">
-      <h2>Ugeplan</h2>
-      <p class="sub">Vælg en madret for hvert måltid. Kalorier og dagstotal opdateres automatisk.</p>
-
-      <div class="goal-field">
-        <label for="kalorie-maal"><strong>Kaloriemål pr. dag</strong></label>
-        <input id="kalorie-maal" type="number" step="10">
-        <span style="font-size:0.8rem;color:var(--muted);">gemmes automatisk</span>
+    <section class="view" id="view-ugeplan" aria-labelledby="ugeplan-title">
+      <div class="view-head">
+        <div>
+          <h1 class="view-title" id="ugeplan-title">Ugeplan</h1>
+          <p class="view-sub">Tryk på et måltid for at vælge en madret</p>
+        </div>
+        <label class="goal card">
+          <span class="goal-icon" data-icon="target"></span>
+          <span class="goal-text"><span class="goal-label">Dagligt mål</span><span class="goal-sub">Gemmes automatisk</span></span>
+          <span class="input-unit input-unit-sm"><input id="kalorie-maal" inputmode="numeric" autocomplete="off" aria-label="Dagligt kaloriemål"><span>kcal</span></span>
+        </label>
       </div>
-
-      <div style="overflow-x:auto;">
-        <table class="plan" id="ugeplan-table"></table>
-      </div>
+      <div class="day-strip" id="day-strip" role="tablist" aria-label="Vælg dag"></div>
+      <div class="week" id="week"></div>
     </section>
 
   </main>
 </div>
 
-<div id="scanner-modal">
-  <div class="scanner-frame">
-    <video id="scanner-video" playsinline muted></video>
+<!-- Ny ingrediens -->
+<dialog class="sheet" id="ingrediens-sheet" aria-labelledby="ingrediens-sheet-title">
+  <form class="sheet-body" id="ingrediens-form" novalidate>
+    <header class="sheet-head">
+      <h2 class="sheet-title" id="ingrediens-sheet-title">Ny ingrediens</h2>
+      <button type="button" class="icon-btn" data-close aria-label="Luk"><span data-icon="x"></span></button>
+    </header>
+    <div class="sheet-scroll">
+      <div class="lookup" id="lookup-status" hidden></div>
+      <input type="hidden" id="ingrediens-barcode">
+      <label class="field">
+        <span class="field-label">Navn</span>
+        <input class="input" id="ingrediens-navn" autocomplete="off" placeholder="Fx Havregryn" enterkeyhint="next">
+      </label>
+      <div class="field-grid">
+        <label class="field">
+          <span class="field-label">Energi</span>
+          <span class="input-unit"><input id="ingrediens-kcal" inputmode="decimal" autocomplete="off" placeholder="0" enterkeyhint="next"><span>kcal</span></span>
+        </label>
+        <label class="field">
+          <span class="field-label">Protein</span>
+          <span class="input-unit"><input id="ingrediens-protein" inputmode="decimal" autocomplete="off" placeholder="0" enterkeyhint="next"><span>g</span></span>
+        </label>
+        <label class="field">
+          <span class="field-label">Fedt</span>
+          <span class="input-unit"><input id="ingrediens-fedt" inputmode="decimal" autocomplete="off" placeholder="0" enterkeyhint="next"><span>g</span></span>
+        </label>
+        <label class="field">
+          <span class="field-label">Kulhydrat</span>
+          <span class="input-unit"><input id="ingrediens-kulhydrat" inputmode="decimal" autocomplete="off" placeholder="0" enterkeyhint="done"><span>g</span></span>
+        </label>
+      </div>
+      <p class="field-hint">Alle værdier er pr. 100 g</p>
+    </div>
+    <footer class="sheet-foot">
+      <button type="submit" class="btn btn-primary btn-lg btn-block" id="ingrediens-submit">Gem ingrediens</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- Ny madret -->
+<dialog class="sheet sheet-tall" id="madret-sheet" aria-labelledby="madret-sheet-title">
+  <form class="sheet-body" id="madret-form" novalidate>
+    <header class="sheet-head">
+      <h2 class="sheet-title" id="madret-sheet-title">Ny madret</h2>
+      <button type="button" class="icon-btn" data-close aria-label="Luk"><span data-icon="x"></span></button>
+    </header>
+    <div class="sheet-scroll">
+      <label class="field">
+        <span class="field-label">Navn</span>
+        <input class="input" id="madret-navn" autocomplete="off" placeholder="Fx Havregrød med banan" enterkeyhint="next">
+      </label>
+      <fieldset class="field fieldset">
+        <legend class="field-label">Kategori</legend>
+        <div class="segmented">
+          <label class="segment"><input type="radio" name="kategori" value="Morgenmad" checked><span>Morgenmad</span></label>
+          <label class="segment"><input type="radio" name="kategori" value="Frokost"><span>Frokost</span></label>
+          <label class="segment"><input type="radio" name="kategori" value="Aftensmad"><span>Aftensmad</span></label>
+          <label class="segment"><input type="radio" name="kategori" value="Snack"><span>Snack</span></label>
+        </div>
+      </fieldset>
+      <div class="field" style="margin-top:18px">
+        <span class="field-label" id="madret-search-label">Tilføj ingredienser</span>
+        <div class="search">
+          <span data-icon="search"></span>
+          <input type="search" id="madret-search" placeholder="Søg efter ingrediens" aria-labelledby="madret-search-label" aria-controls="madret-results" autocomplete="off" enterkeyhint="done">
+          <button type="button" class="icon-btn" id="madret-search-clear" aria-label="Ryd søgning" hidden><span data-icon="x"></span></button>
+        </div>
+        <ul class="results" id="madret-results" hidden></ul>
+      </div>
+      <div class="section-label"><span>I retten</span><span class="num" id="madret-count"></span></div>
+      <ul class="pending-list" id="madret-pending"></ul>
+      <p class="pending-empty" id="madret-pending-empty">Søg ovenfor for at tilføje ingredienser</p>
+    </div>
+    <footer class="sheet-foot">
+      <div class="summary">
+        <span class="summary-kcal num"><span id="madret-total-kcal">0</span> <small>kcal</small></span>
+        <div id="madret-total-macros"></div>
+      </div>
+      <button type="submit" class="btn btn-primary btn-lg" id="madret-submit">Gem madret</button>
+    </footer>
+  </form>
+</dialog>
+
+<!-- Vælg madret til et måltid -->
+<dialog class="sheet" id="meal-sheet" aria-labelledby="meal-sheet-title">
+  <div class="sheet-body">
+    <header class="sheet-head">
+      <div>
+        <p class="sheet-eyebrow" id="meal-sheet-day"></p>
+        <h2 class="sheet-title" id="meal-sheet-title"></h2>
+      </div>
+      <button type="button" class="icon-btn" data-close aria-label="Luk"><span data-icon="x"></span></button>
+    </header>
+    <div class="sheet-scroll">
+      <ul class="options" id="meal-options"></ul>
+    </div>
   </div>
-  <p class="scanner-hint">Hold stregkoden inden for rammen, ca. 15–20 cm fra kameraet</p>
-  <button type="button" class="secondary" style="background:#fff;" id="btn-cancel-scan">Annuller scanning</button>
-</div>
+</dialog>
+
+<!-- Bekræftelse -->
+<dialog class="sheet sheet-confirm" id="confirm-sheet" aria-labelledby="confirm-title">
+  <div class="sheet-body">
+    <header class="sheet-head"><h2 class="sheet-title" id="confirm-title"></h2></header>
+    <div class="sheet-scroll"><p id="confirm-message"></p></div>
+    <footer class="sheet-foot">
+      <button type="button" class="btn btn-secondary" data-answer="no">Annuller</button>
+      <button type="button" class="btn btn-danger" data-answer="yes" id="confirm-ok">Slet</button>
+    </footer>
+  </div>
+</dialog>
+
+<!-- Stregkodescanner -->
+<dialog class="scanner" id="scanner" aria-label="Scan stregkode">
+  <video id="scanner-video" playsinline muted></video>
+  <div class="scanner-target"><span class="scanner-line"></span></div>
+  <div class="scanner-overlay">
+    <div class="scanner-top">
+      <span class="scanner-title">Scan stregkode</span>
+      <button type="button" class="icon-btn" id="scanner-close" aria-label="Luk scanner"><span data-icon="x"></span></button>
+    </div>
+    <div class="scanner-bottom">
+      <p class="scanner-hint">Hold stregkoden inden for rammen, ca. 15–20 cm fra kameraet</p>
+      <button type="button" class="btn btn-secondary" id="scanner-manual"><span data-icon="keyboard"></span>Indtast manuelt</button>
+    </div>
+  </div>
+</dialog>
+
+<div class="toast-region" id="toasts" popover="manual" aria-live="polite"></div>
 
 <script type="module" src="/src/main.js"></script>
 </body>
