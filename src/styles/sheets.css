@@ -79,6 +79,7 @@
 @media (min-width: 700px){
   .sheet{
     width: min(560px, calc(100% - 48px));
+    height: fit-content; /* centreret med inset: 0 – "auto" ville strække arket til fuld højde */
     max-height: min(780px, calc(100dvh - 64px));
     inset: 0;
     margin: auto;

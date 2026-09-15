@@ -79,10 +79,30 @@ function render(){
       </button>`;
   }).join("");
 
-  $("week").innerHTML = DAYS.map(dag => dayCard(dag, stats[dag], goal)).join("");
+  $("week").innerHTML = DAYS.map(dag => dayCard(dag, stats[dag], goal)).join("") + weekSummaryHtml(stats, goal);
 }
 
 const progress = (kcal, goal) => (goal > 0 ? Math.min(kcal / goal, 1) * 100 : 0);
+
+// Ugens total og gennemsnit pr. planlagt dag. Vises kun i gitteret med 2 eller 4 kolonner (se views.css)
+function weekSummaryHtml(stats, goal){
+  const planned = DAYS.filter(dag => stats[dag].kcal > 0);
+  const total = planned.reduce((sum, dag) => sum + stats[dag].kcal, 0);
+  const average = planned.length ? Math.round(total / planned.length) : 0;
+  let diff = "";
+  if (goal > 0 && planned.length) {
+    const delta = average - goal;
+    diff = `<p class="day-diff ${delta > 0 ? "is-over" : "is-under"}">${formatKcal(Math.abs(delta))} kcal ${delta > 0 ? "over" : "under"} målet i snit</p>`;
+  }
+  return `
+    <article class="week-summary card" aria-label="Opsummering af ugen">
+      <p class="week-summary-label">Hele ugen</p>
+      <p class="week-summary-total"><strong>${formatKcal(total)}</strong> kcal</p>
+      <p class="week-summary-avg">${planned.length ? `Gns. ${formatKcal(average)} kcal pr. planlagt dag` : "Ingen dage planlagt endnu"}</p>
+      ${diff}
+      <p class="week-summary-avg">${planned.length} af 7 dage planlagt</p>
+    </article>`;
+}
 
 function dayCard(dag, { kcal, meals }, goal){
   const over = goal > 0 && kcal > goal;

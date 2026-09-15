@@ -234,7 +234,41 @@ mark{ background: none; color: var(--primary); font-weight: 800; }
 .week{ display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 @media (max-width: 699px){ .day:not(.is-active){ display: none; } }
 @media (min-width: 700px){ .week{ grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (min-width: 1000px){ .week{ grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); } }
+/* Mandag–torsdag øverst, fredag–søndag + ugens opsummering nederst */
+@media (min-width: 1000px){ .week{ grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* Brede skærme: hele ugen på én række som en ugetavle med kompakte måltider */
+@media (min-width: 1400px){
+  .content:has(#view-ugeplan.is-active){ max-width: 1720px; }
+  .week{ grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
+  .day{ gap: 12px; padding: 14px 12px; }
+  .day-name{ font-size: 1.05rem; }
+  .day-total{ flex-wrap: wrap; column-gap: 4px; }
+  .day-total strong{ font-size: 1.35rem; }
+  .meal{ gap: 8px; min-height: 0; padding: 10px; }
+  .meal-top{ flex-wrap: wrap; column-gap: 6px; }
+  .meal-icon,
+  .meal-chevron{ display: none; }
+}
+
+/* Opsummering af ugen – udfylder pladsen efter søndag i gitteret med 2 eller 4 kolonner */
+.week-summary{ display: none; }
+@media (min-width: 700px) and (max-width: 1399px){
+  .week-summary{
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    padding: 20px;
+    border-color: transparent;
+    background: var(--primary-soft);
+    box-shadow: none;
+  }
+}
+.week-summary-label{ color: var(--primary); font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.week-summary-total{ color: var(--text-2); font-weight: 600; font-variant-numeric: tabular-nums; }
+.week-summary-total strong{ margin-right: 2px; color: var(--text); font-size: 2rem; font-weight: 800; letter-spacing: -.02em; }
+.week-summary-avg{ color: var(--text-2); font-size: .9rem; }
 
 .day{ display: flex; flex-direction: column; gap: 14px; padding: 16px; }
 .day.is-today{ border-color: color-mix(in srgb, var(--primary) 55%, var(--border)); }
