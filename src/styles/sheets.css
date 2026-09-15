@@ -4,9 +4,9 @@
 .sheet{
   width: 100%;
   max-width: 100%;
+  height: auto;
   max-height: calc(100dvh - var(--safe-top) - 24px);
-  /* Forankret direkte til bunden i stedet for via auto-margin, så lave ark altid er synlige */
-  inset: auto 0 0 0;
+  inset: auto 0 0 0; /* i bunden af skærmen */
   margin: 0;
   padding: 0;
   overflow: hidden;
@@ -20,12 +20,13 @@
 .sheet::backdrop{ background: rgb(10 12 10 / .45); animation: fade-in .2s ease; }
 .sheet-tall{ height: calc(100dvh - var(--safe-top) - 24px); }
 
-/* Starter kun lidt under slutpositionen: arket er på skærmen, selv hvis animationen ikke afspilles */
-@keyframes sheet-up{ from{ transform: translateY(24px); } }
+@keyframes sheet-up{ from{ transform: translateY(100%); } }
 @keyframes sheet-pop{ from{ opacity: 0; transform: translateY(12px) scale(.98); } }
 @keyframes fade-in{ from{ opacity: 0; } }
 
-.sheet-body{ display: flex; flex: 1; flex-direction: column; min-height: 0; }
+/* flex-basis skal være auto (indholdets højde), ikke 0 som ved "flex: 1". De fleste ark har ingen
+   fast højde, og så beregner iOS' WebKit en basis på 0 % som 0 px – arket får højden 0 og er usynligt */
+.sheet-body{ display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
 
 .sheet-head{
   position: relative;
@@ -60,7 +61,7 @@
   text-transform: uppercase;
 }
 .sheet-scroll{
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
   padding: 8px 20px 24px;
   overflow-y: auto;
