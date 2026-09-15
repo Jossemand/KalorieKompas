@@ -14,10 +14,5 @@ export default defineConfig(({ command, mode }) => {
       );
     }
   }
-  return {
-    build: {
-      // html5-qrcode (inkl. stregkode-dekoderen) fylder ~0,6 MB – fint til en personlig app
-      chunkSizeWarningLimit: 800,
-    },
-  };
+  return {};
 });

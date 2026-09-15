@@ -23,7 +23,7 @@ er bygget endnu (se "Kendte begrænsninger" nedenfor).
    Native/Flutter, fordi det er simplere at bygge/hoste og kameraadgang i browseren er
    fuldt tilstrækkeligt til stregkodescanning.
 2. **Vanilla JS, intet framework.** v1 var rå HTML/CSS/JS i én fil uden build-step.
-   *Opdateret:* bruger har valgt Vite som build-værktøj med supabase-js og html5-qrcode
+   *Opdateret:* bruger har valgt Vite som build-værktøj med supabase-js og barcode-detector
    som npm-pakker (for env-variabler, låste versioner og dev-server). CSS og JS ligger
    nu i `src/`. Stadig intet framework — skift ikke til React/Vue/osv. uden at spørge.
 3. **Supabase som backend.** Valgt fordi bruger ønskede data synkroniseret mellem
@@ -37,8 +37,10 @@ er bygget endnu (se "Kendte begrænsninger" nedenfor).
    `FatSecret` blev overvejet men afvist til v1, fordi deres gratis tier kun dækker
    amerikanske stregkoder — irrelevant for en dansk bruger. Kan genovervejes senere hvis
    Open Food Facts-dækningen er for tynd for danske produkter.
-6. **html5-qrcode** (npm-pakke) bruges til at læse stregkoder fra kamera-feedet i
-   browseren.
+6. **barcode-detector** (npm-pakke; zxing-cpp som WASM) læser stregkoder fra
+   kamera-feedet. Erstattede html5-qrcode, som ikke kunne læse stregkoder på mobil,
+   fordi den kun afkoder et nedskaleret udsnit (~250 px bredt) af kamerabilledet.
+   WASM-filen serveres fra sitet selv, ikke fra en CDN.
 7. **Repo og deployment:** privat GitHub-repo, deploy via **Vercel** (valgt af bruger)
    med auto-deploy on push til `main`. Supabase kan ikke selv hoste sitet, da Storage og
    Edge Functions serverer HTML som `text/plain`.
@@ -101,8 +103,8 @@ Env-variabler holder den ude af Git, men beskytter ikke data. Det gør kun RLS.
 - **Ingen automatiserede tests.**
 - **Ingen CI/CD er sat op endeles** — det er formentlig det næste skridt (se nedenfor).
 - **Ingen offline-håndtering / fejl-UI ud over simple `alert()`-kald.**
-- **html5-qrcode er ikke vedligeholdt** (seneste version 2.3.8 fra april 2023). Den
-  virker, men kan skiftes ud, hvis scanning giver problemer.
+- **iPhones med flere linser kan ikke fokusere helt tæt på.** Stregkoden skal holdes
+  ca. 15–20 cm fra kameraet (står også som hjælpetekst i scanneren).
 - Appen er **ikke testet i en rigtig browser** endnu (kun syntax-valideret). Første
   opgave i det nye repo bør være at faktisk teste flowet end-to-end: tilføj ingrediens,
   scan en stregkode, byg en madret, udfyld en ugeplan.

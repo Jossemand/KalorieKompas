@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import { Html5Qrcode, Html5QrcodeSupportedFormats } from "html5-qrcode";
+import { BarcodeDetector, prepareZXingModule } from "barcode-detector/ponyfill";
+import zxingWasmUrl from "zxing-wasm/reader/zxing_reader.wasm?url";
 import "./style.css";
 
 /* ============================================================
@@ -16,15 +17,17 @@ let db; // Supabase-klienten
 let ingredienserCache = [];
 let madretterCache = []; // includes computed totalKcal
 
-let scanner = null;      // Html5Qrcode-instans, oprettes første gang der scannes
-let scannerOpen = false; // sættes til false, så snart scanneren lukkes eller et scan er læst
+const BARCODE_FORMATS = ["ean_13", "ean_8", "upc_a", "upc_e"];
+let barcodeDetector = null; // oprettes første gang der scannes, så WASM-filen kun hentes når den skal bruges
+let cameraStream = null;    // aktiv kamerastrøm, mens scanneren er åben
+let scanSession = 0;        // øges når scanneren åbnes/lukkes, så et forældet forløb kan se, at det skal stoppe
 
-const BARCODE_FORMATS = [
-  Html5QrcodeSupportedFormats.EAN_13,
-  Html5QrcodeSupportedFormats.EAN_8,
-  Html5QrcodeSupportedFormats.UPC_A,
-  Html5QrcodeSupportedFormats.UPC_E,
-];
+// Stregkode-dekoderen er zxing-cpp som WASM. Hent filen fra vores eget site i stedet for en CDN
+prepareZXingModule({
+  overrides: {
+    locateFile: (path, prefix) => (path.endsWith(".wasm") ? zxingWasmUrl : prefix + path),
+  },
+});
 
 const DAYS = ["Mandag","Tirsdag","Onsdag","Torsdag","Fredag","Lørdag","Søndag"];
 const MEALS = ["Morgenmad","Frokost","Aftensmad","Snack"];
@@ -130,50 +133,84 @@ async function deleteIngrediens(id){
 
 /* --- Stregkode-scanning --- */
 async function startScanner(){
-  scannerOpen = true;
+  const session = ++scanSession;
   document.getElementById("scanner-modal").style.display = "flex";
-  scanner ??= new Html5Qrcode("reader", {
-    formatsToSupport: BARCODE_FORMATS,
-    // Brug browserens indbyggede stregkodelæser (fx Chrome på Android), hvis den findes
-    experimentalFeatures: { useBarCodeDetectorIfSupported: true },
-    verbose: false,
-  });
+  barcodeDetector ??= new BarcodeDetector({ formats: BARCODE_FORMATS });
+
+  let stream;
   try {
-    await scanner.start(
-      { facingMode: "environment" }, // bagkameraet
-      // Aflangt scanfelt, der passer til stregkoder og skalerer med skærmen
-      { fps: 10, qrbox: (w, h) => ({ width: Math.floor(w * 0.8), height: Math.floor(Math.min(w, h) * 0.4) }) },
-      onScanSuccess
-    );
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: false,
+      video: {
+        facingMode: "environment", // bagkameraet
+        // Høj opløsning er afgørende for at kunne skelne de tynde streger i en stregkode
+        width: { ideal: 1920 },
+        height: { ideal: 1080 },
+      },
+    });
   } catch (err) {
-    if (scannerOpen) alert("Kunne ikke starte kameraet: " + err);
-    closeScanner();
+    if (session === scanSession) {
+      alert("Kunne ikke starte kameraet: " + (err.message || err));
+      closeScanner();
+    }
     return;
   }
+
   // Brugeren kan have trykket "Annuller", mens kameraet startede
-  if (!scannerOpen) await stopCamera();
+  if (session !== scanSession) {
+    stream.getTracks().forEach(track => track.stop());
+    return;
+  }
+
+  cameraStream = stream;
+  enableContinuousFocus(stream);
+  const video = document.getElementById("scanner-video");
+  video.srcObject = stream;
+  video.play().catch(() => {}); // afvises kun, hvis scanneren lukkes, før videoen når at starte
+  scanLoop(video, session);
+}
+
+// Afkoder hele videobilledet i fuld opløsning, indtil der findes en stregkode eller scanneren lukkes
+async function scanLoop(video, session){
+  while (session === scanSession) {
+    if (video.readyState >= video.HAVE_CURRENT_DATA) {
+      let barcodes;
+      try {
+        barcodes = await barcodeDetector.detect(video);
+      } catch (err) {
+        console.error(err);
+        if (session === scanSession) {
+          alert("Stregkodelæseren kunne ikke starte: " + (err.message || err));
+          closeScanner();
+        }
+        return;
+      }
+      if (barcodes.length > 0 && session === scanSession) {
+        closeScanner();
+        showTab("ingredienser");
+        lookupBarcode(barcodes[0].rawValue);
+        return;
+      }
+    }
+    await new Promise(resolve => setTimeout(resolve, 100)); // ca. 10 forsøg i sekundet
+  }
+}
+
+// Bed om kontinuerlig autofokus, hvor browseren understøtter det (fx Chrome på Android)
+function enableContinuousFocus(stream){
+  const [track] = stream.getVideoTracks();
+  const focusModes = track?.getCapabilities?.().focusMode ?? [];
+  if (focusModes.includes("continuous")) {
+    track.applyConstraints({ advanced: [{ focusMode: "continuous" }] }).catch(() => {});
+  }
 }
 
 function closeScanner(){
-  scannerOpen = false;
+  scanSession++;
   document.getElementById("scanner-modal").style.display = "none";
-  stopCamera();
-}
-
-async function stopCamera(){
-  if (!scanner?.isScanning) return;
-  try {
-    await scanner.stop();
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-function onScanSuccess(decodedText){
-  if (!scannerOpen) return; // ignorér ekstra scans, mens kameraet lukkes
-  closeScanner();
-  showTab("ingredienser");
-  lookupBarcode(decodedText);
+  document.getElementById("scanner-video").srcObject = null;
+  cameraStream?.getTracks().forEach(track => track.stop());
+  cameraStream = null;
 }
 
 async function lookupBarcode(barcode){

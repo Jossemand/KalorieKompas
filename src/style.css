@@ -257,10 +257,33 @@ tr.diff-row.under td{color:var(--accent);}
   gap:14px;
   padding:20px;
 }
-#reader{
+.scanner-frame{
+  position:relative;
   width:100%;
   max-width:420px;
   background:#000;
+}
+.scanner-frame video{
+  display:block;
+  width:100%;
+  max-height:65vh;
+  object-fit:cover;
+}
+/* Sigteramme – kun en visuel hjælp, hele billedet scannes */
+.scanner-frame::after{
+  content:"";
+  position:absolute;
+  inset:30% 10%;
+  border:3px solid rgba(255,255,255,0.85);
+  border-radius:6px;
+  pointer-events:none;
+}
+.scanner-hint{
+  margin:0;
+  max-width:420px;
+  color:#fff;
+  font-size:0.9rem;
+  text-align:center;
 }
 #setup-banner{
   max-width:640px;

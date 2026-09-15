@@ -139,7 +139,10 @@ npm run dev</code>
 </div>
 
 <div id="scanner-modal">
-  <div id="reader"></div>
+  <div class="scanner-frame">
+    <video id="scanner-video" playsinline muted></video>
+  </div>
+  <p class="scanner-hint">Hold stregkoden inden for rammen, ca. 15–20 cm fra kameraet</p>
   <button type="button" class="secondary" style="background:#fff;" id="btn-cancel-scan">Annuller scanning</button>
 </div>
 
