@@ -51,7 +51,8 @@
 .sheet-title{ font-size: 1.3rem; font-weight: 800; }
 /* Titlen får fokus, når arket åbner (autofocus), så ingen knap får en fokusring */
 .sheet-title:focus,
-.scanner-title:focus{ outline: none; }
+.scanner-title:focus,
+.sheet:focus{ outline: none; } /* fokus kan falde tilbage på selve arket, når et ark ovenpå lukker */
 .sheet-eyebrow{
   margin-bottom: 2px;
   color: var(--text-3);

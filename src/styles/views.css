@@ -486,6 +486,14 @@ mark{ background: none; color: var(--primary); font-weight: 800; }
 .browse-sort .chip{ min-height: 36px; }
 .browse-sort .chip.is-active{ border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
 .results.is-browsing{ max-height: 340px; overflow-y: auto; overscroll-behavior: contain; }
+
+/* ---------- Ny ingrediens fra byggeren ---------- */
+.builder-add{ display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 0 -12px; }
+.builder-add .btn{ min-height: 40px; padding: 0 12px; color: var(--primary); font-size: .9rem; }
+.results-empty .btn{ display: flex; margin-top: 10px; }
+.dish-amount{ margin-top: 18px; padding: 14px; border-radius: var(--radius-md); background: var(--primary-soft); }
+.dish-amount .field-label{ color: var(--primary); }
+.dish-amount .field-hint{ margin-top: 2px; color: var(--primary); font-weight: 650; }
 .meal-search{ margin-bottom: 12px; }
 
 /* ---------- Opsætningsside ---------- */

@@ -1,6 +1,6 @@
 import { store, subscribe, addIngrediens, updateIngrediens, deleteIngrediens } from "../state.js";
 import { icon } from "../lib/icons.js";
-import { escapeHtml, formatKcal, highlight, parseDecimal, searchByName, toInputValue } from "../lib/format.js";
+import { escapeHtml, formatKcal, highlight, parseDecimal, parsePositive, searchByName, toInputValue } from "../lib/format.js";
 import { brandHtml, emptyStateHtml, macrosHtml } from "../lib/templates.js";
 import { confirmDialog, openSheet, setBusy, showError, toast } from "../lib/ui.js";
 import { setupScanner, startScanner } from "../scanner.js";
@@ -11,13 +11,15 @@ const FIELDS = { kcal: "ingrediens-kcal", protein: "ingrediens-protein", fedt: "
 let query = "";
 let editingId = null;  // id på ingrediensen, der redigeres – null betyder ny ingrediens
 let lookupSession = 0; // så et sent svar fra Open Food Facts ikke overskriver en nyere indtastning
+let dishContext = null; // { onCreated(ingrediens, gram) }, når ingrediensen oprettes fra madret-byggeren
+let scanContext = null; // samme, men husket mens scanneren er åben
 
 export function setupIngredienser(){
-  $("btn-scan").addEventListener("click", startScanner);
+  $("btn-scan").addEventListener("click", () => startScan());
   $("btn-add-ingrediens").addEventListener("click", () => openForm());
   setupScanner({
-    onDetected: barcode => { openForm(); lookupBarcode(barcode); },
-    onManual: () => openForm(),
+    onDetected: barcode => { openForm(null, scanContext); lookupBarcode(barcode); },
+    onManual: () => openForm(null, scanContext),
   });
 
   const search = $("ingredienser-search");
@@ -36,7 +38,32 @@ export function setupIngredienser(){
 
   $("ingredienser-list").addEventListener("click", onListClick);
   $("ingrediens-form").addEventListener("submit", onSubmit);
+  $("ingrediens-form").addEventListener("input", updateDishAmountHint);
   subscribe(render);
+}
+
+function startScan(context = null){
+  scanContext = context;
+  startScanner();
+}
+
+// Fra madret-byggeren: opret en ingrediens (evt. med navnet fra søgefeltet) og læg den direkte i retten
+export function createIngredientForDish({ navn = "", onCreated }){
+  openForm(null, { onCreated });
+  $("ingrediens-navn").value = navn;
+}
+
+export function scanIngredientForDish({ onCreated }){
+  startScan({ onCreated });
+}
+
+function updateDishAmountHint(){
+  if (!dishContext) return;
+  const gram = parsePositive($("ingrediens-maengde").value);
+  const kcal100 = parseDecimal($(FIELDS.kcal).value);
+  $("ingrediens-maengde-hint").textContent = gram && Number.isFinite(kcal100)
+    ? `= ${formatKcal((gram / 100) * kcal100)} kcal i retten`
+    : "Udfyld energi og mængde for at se kalorierne i retten";
 }
 
 function render(){
@@ -100,15 +127,17 @@ async function onListClick(event){
 }
 
 /* ---------- Formular: ny eller rediger ---------- */
-function openForm(ing = null){
+function openForm(ing = null, context = null){
   lookupSession++;
   editingId = ing?.id ?? null;
+  dishContext = ing ? null : context;
   const form = $("ingrediens-form");
   form.reset();
   form.querySelectorAll(".is-invalid").forEach(el => el.classList.remove("is-invalid"));
   $("ingrediens-barcode").value = ing?.barcode ?? ""; // skjulte felter nulstilles ikke af reset()
-  $("ingrediens-sheet-title").textContent = ing ? "Rediger ingrediens" : "Ny ingrediens";
-  $("ingrediens-submit").textContent = ing ? "Gem ændringer" : "Gem ingrediens";
+  $("ingrediens-dish-amount").hidden = !dishContext;
+  $("ingrediens-sheet-title").textContent = ing ? "Rediger ingrediens" : dishContext ? "Ny ingrediens til retten" : "Ny ingrediens";
+  $("ingrediens-submit").textContent = ing ? "Gem ændringer" : dishContext ? "Gem og tilføj til retten" : "Gem ingrediens";
   if (ing) {
     $("ingrediens-navn").value = ing.navn;
     $("ingrediens-producent").value = ing.producent ?? "";
@@ -118,6 +147,7 @@ function openForm(ing = null){
     $(FIELDS.kulhydrat).value = toInputValue(ing.kulhydrat_100g);
   }
   setLookup(null);
+  updateDishAmountHint();
   openSheet($("ingrediens-sheet"));
 }
 
@@ -152,6 +182,7 @@ async function lookupBarcode(barcode){
     $(FIELDS.fedt).value = toInputValue(n.fat_100g);
     $(FIELDS.kulhydrat).value = toInputValue(n.carbohydrates_100g);
     setLookup("found", "Fundet i Open Food Facts", barcode);
+    updateDishAmountHint();
   } catch (err) {
     if (session !== lookupSession) return;
     console.error(err);
@@ -189,10 +220,14 @@ async function onSubmit(event){
   for (const key of ["protein", "fedt", "kulhydrat"]) {
     if (Number.isNaN(values[key]) || values[key] < 0) invalid.push(FIELDS[key]);
   }
+  const gram = dishContext ? parsePositive($("ingrediens-maengde").value) : null;
+  if (dishContext && !gram) invalid.push("ingrediens-maengde");
   if (invalid.length) {
     invalid.forEach(id => $(id).closest(".field").classList.add("is-invalid"));
     $(invalid[0]).focus();
-    toast("Udfyld navn og energi – værdier skal være tal", { type: "error" });
+    toast(dishContext
+      ? "Udfyld navn, energi og mængde i retten – værdier skal være tal"
+      : "Udfyld navn og energi – værdier skal være tal", { type: "error" });
     return;
   }
 
@@ -208,10 +243,17 @@ async function onSubmit(event){
   const submit = $("ingrediens-submit");
   setBusy(submit, true);
   try {
-    if (editingId) await updateIngrediens(editingId, row);
-    else await addIngrediens(row);
-    $("ingrediens-sheet").close();
-    toast(editingId ? `Ændringerne i ${navn} er gemt` : `${navn} er gemt`);
+    if (editingId) {
+      await updateIngrediens(editingId, row);
+      $("ingrediens-sheet").close();
+      toast(`Ændringerne i ${navn} er gemt`);
+    } else {
+      const created = await addIngrediens(row);
+      const context = dishContext;
+      $("ingrediens-sheet").close();
+      context?.onCreated(created, gram);
+      toast(context ? `${navn} er gemt og lagt i retten` : `${navn} er gemt`);
+    }
   } catch (err) {
     showError(err);
   } finally {

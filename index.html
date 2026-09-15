@@ -130,6 +130,14 @@ npm run dev</pre>
         </label>
       </div>
       <p class="field-hint">Alle værdier er pr. 100 g</p>
+      <!-- Kun når ingrediensen oprettes fra madret-byggeren -->
+      <div class="dish-amount" id="ingrediens-dish-amount" hidden>
+        <label class="field">
+          <span class="field-label">Mængde i retten</span>
+          <span class="input-unit"><input id="ingrediens-maengde" inputmode="decimal" autocomplete="off" value="100" enterkeyhint="done"><span>g</span></span>
+          <span class="field-hint" id="ingrediens-maengde-hint"></span>
+        </label>
+      </div>
     </div>
     <footer class="sheet-foot">
       <button type="submit" class="btn btn-primary btn-lg btn-block" id="ingrediens-submit">Gem ingrediens</button>
@@ -172,6 +180,10 @@ npm run dev</pre>
             <button type="button" class="icon-btn" id="madret-search-clear" aria-label="Ryd søgning" hidden><span data-icon="x"></span></button>
           </div>
           <button type="button" class="btn btn-secondary browse-toggle" id="madret-browse" aria-expanded="false" aria-controls="madret-results"><span data-icon="list"></span>Alle</button>
+        </div>
+        <div class="builder-add" role="group" aria-label="Opret en ny ingrediens">
+          <button type="button" class="btn btn-ghost" id="madret-new-ingrediens"><span data-icon="plus"></span>Ny ingrediens</button>
+          <button type="button" class="btn btn-ghost" id="madret-scan-ingrediens"><span data-icon="scan-barcode"></span>Scan vare</button>
         </div>
         <div class="browse-sort" id="madret-browse-sort" role="group" aria-label="Sortér ingredienser" hidden>
           <span>Sortér:</span>

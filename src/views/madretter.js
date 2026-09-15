@@ -7,6 +7,7 @@ import { escapeHtml, formatGram, formatKcal, highlight, parseDecimal, parsePosit
 import { formatPortions, kcalPerPortion } from "../lib/portion.js";
 import { brandHtml, emptyStateHtml, macrosHtml } from "../lib/templates.js";
 import { confirmDialog, openSheet, setBusy, showError, toast } from "../lib/ui.js";
+import { createIngredientForDish, scanIngredientForDish } from "./ingredienser.js";
 
 const $ = id => document.getElementById(id);
 const MAX_RESULTS = 20;
@@ -47,9 +48,12 @@ export function setupMadretter(){
     renderResults();
   });
   $("madret-results").addEventListener("click", event => {
+    if (event.target.closest("[data-create-ingredient]")) return createIngredient();
     const result = event.target.closest("[data-id]");
     if (result) addPending(result.dataset.id);
   });
+  $("madret-new-ingrediens").addEventListener("click", () => createIngredient());
+  $("madret-scan-ingrediens").addEventListener("click", () => scanIngredientForDish({ onCreated: addCreatedIngredient }));
   $("madret-pending").addEventListener("click", onPendingClick);
   $("madret-pending").addEventListener("input", onPendingInput);
   $("madret-portioner").addEventListener("input", updateTotals);
@@ -294,14 +298,20 @@ function renderResults(){
 
   box.hidden = false;
   if (store.ingredienser.length === 0) {
-    box.innerHTML = '<li class="results-empty">Du har ingen ingredienser endnu. Tilføj dem under Ingredienser.</li>';
+    box.innerHTML = `
+      <li class="results-empty">Du har ingen ingredienser endnu.
+        <button type="button" class="btn btn-secondary" data-create-ingredient>${icon("plus")}Opret ingrediens</button>
+      </li>`;
     return;
   }
 
   let matches = query ? searchByName(store.ingredienser, query) : sortIngredients(store.ingredienser);
   if (!browsing) matches = matches.slice(0, MAX_RESULTS);
   if (matches.length === 0) {
-    box.innerHTML = `<li class="results-empty">Ingen ingredienser matcher "${escapeHtml(query)}". Tilføj den under Ingredienser først.</li>`;
+    box.innerHTML = `
+      <li class="results-empty">Ingen ingredienser matcher "${escapeHtml(query)}".
+        <button type="button" class="btn btn-secondary" data-create-ingredient>${icon("plus")}Opret "${escapeHtml(query)}"</button>
+      </li>`;
     return;
   }
 
@@ -332,6 +342,21 @@ function onSearchKeydown(event){
   } else if (event.key === "Enter" && finePointer.matches) {
     addPending(buttons[highlighted].dataset.id);
   }
+}
+
+// Opret en ny ingrediens oven på byggeren – navnet fra søgefeltet udfyldes på forhånd
+function createIngredient(){
+  createIngredientForDish({ navn: $("madret-search").value.trim(), onCreated: addCreatedIngredient });
+}
+
+function addCreatedIngredient(ingrediens, gram){
+  if (!$("madret-sheet").open) return; // byggeren er lukket imens – ingrediensen er stadig gemt
+  pending = pending.filter(p => p.ingrediens.id !== ingrediens.id);
+  pending.push({ ingrediens, maengde_g: gram });
+  $("madret-search").value = "";
+  renderPending();
+  renderResults();
+  $("madret-pending").querySelector(`[data-id="${ingrediens.id}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
 function addPending(id){

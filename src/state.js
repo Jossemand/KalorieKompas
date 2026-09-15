@@ -65,10 +65,12 @@ async function loadIngredienser(){
   store.ingredienser = unwrap(await db.from("ingredienser").select("*").order("navn"), "Kunne ikke hente ingredienser");
 }
 
+// Returnerer den oprettede ingrediens, så den fx kan lægges direkte i en madret
 export async function addIngrediens(row){
-  unwrap(await db.from("ingredienser").insert([row]), "Kunne ikke gemme ingrediensen");
+  const [created] = unwrap(await db.from("ingredienser").insert([row]).select(), "Kunne ikke gemme ingrediensen");
   await loadIngredienser();
   notify();
+  return store.ingredienser.find(i => i.id === created.id) ?? created;
 }
 
 export async function updateIngrediens(id, row){
