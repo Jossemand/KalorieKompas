@@ -72,7 +72,14 @@
 @media (min-width: 1000px){ .dish-grid{ grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 .dish{ display: flex; flex-direction: column; gap: 6px; padding: 10px 8px 16px 16px; }
-.dish-top{ display: flex; align-items: center; justify-content: space-between; }
+.dish-head{ display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
+.dish-heading{ display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; padding-top: 12px; }
+.dish.is-draft{
+  border: 2px dashed color-mix(in srgb, var(--warn) 55%, var(--border));
+  background: transparent;
+  box-shadow: none;
+}
+.badge-draft{ color: var(--warn); background: var(--warn-soft); }
 .dish-title{ padding-right: 8px; font-size: 1.12rem; font-weight: 750; }
 .dish-ingredients{
   display: -webkit-box;
@@ -422,6 +429,44 @@ mark{ background: none; color: var(--primary); font-weight: 800; }
 .amount-presets{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .amount-presets .chip.is-active{ border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
 .meal-amount-text{ color: var(--text-3); font-size: .8rem; font-weight: 600; }
+
+/* ---------- Åbn en ingrediens + producent ---------- */
+.item{ position: relative; }
+.item-open{
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.item-open::after{ content: ""; position: absolute; inset: 0; border-radius: var(--radius-lg); }
+.item-open:focus-visible{ outline: none; }
+.item:has(.item-open:focus-visible){ outline: 3px solid color-mix(in srgb, var(--primary) 55%, transparent); outline-offset: 2px; }
+.item > .icon-btn{ position: relative; z-index: 1; }
+.item:hover{ border-color: color-mix(in srgb, var(--primary) 35%, var(--border)); }
+.brand-text{ margin-left: 6px; color: var(--text-3); font-size: .8em; font-weight: 600; }
+
+/* ---------- Alle ingredienser i byggeren ---------- */
+.search-row{ display: flex; gap: 8px; }
+.search-row .search{ flex: 1; min-width: 0; }
+.browse-toggle{ min-height: 52px; padding: 0 14px; border-radius: var(--radius-md); }
+.browse-toggle[aria-expanded="true"]{ border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+.browse-sort{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  color: var(--text-3);
+  font-size: .85rem;
+  font-weight: 600;
+}
+.browse-sort .chip{ min-height: 36px; }
+.browse-sort .chip.is-active{ border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+.results.is-browsing{ max-height: 340px; overflow-y: auto; overscroll-behavior: contain; }
+.meal-search{ margin-bottom: 12px; }
 
 /* ---------- Opsætningsside ---------- */
 .setup{ width: calc(100% - 32px); max-width: 640px; margin: 48px auto; padding: 28px; }

@@ -66,7 +66,6 @@ npm run dev</pre>
           <button type="button" class="btn btn-primary" id="btn-new-madret"><span data-icon="plus"></span>Ny madret</button>
         </div>
       </div>
-      <div class="chips" id="madret-filter" role="group" aria-label="Filtrer efter kategori"></div>
       <div class="dish-grid" id="madretter-list" aria-busy="true">
         <div class="skeleton dish-skeleton"></div>
         <div class="skeleton dish-skeleton"></div>
@@ -107,6 +106,10 @@ npm run dev</pre>
       <label class="field">
         <span class="field-label">Navn</span>
         <input class="input" id="ingrediens-navn" autocomplete="off" placeholder="Fx Havregryn" enterkeyhint="next">
+      </label>
+      <label class="field">
+        <span class="field-label">Producent <span class="optional">(valgfri)</span></span>
+        <input class="input" id="ingrediens-producent" autocomplete="off" placeholder="Fx Arla" enterkeyhint="next">
       </label>
       <div class="field-grid">
         <label class="field">
@@ -160,21 +163,20 @@ npm run dev</pre>
         <span class="field-label">Navn</span>
         <input class="input" id="madret-navn" autocomplete="off" placeholder="Fx Havregrød med banan" enterkeyhint="next">
       </label>
-      <fieldset class="field fieldset">
-        <legend class="field-label">Kategori</legend>
-        <div class="segmented">
-          <label class="segment"><input type="radio" name="kategori" value="Morgenmad" checked><span>Morgenmad</span></label>
-          <label class="segment"><input type="radio" name="kategori" value="Frokost"><span>Frokost</span></label>
-          <label class="segment"><input type="radio" name="kategori" value="Aftensmad"><span>Aftensmad</span></label>
-          <label class="segment"><input type="radio" name="kategori" value="Snack"><span>Snack</span></label>
-        </div>
-      </fieldset>
-      <div class="field" style="margin-top:18px">
+      <div class="field">
         <span class="field-label" id="madret-search-label">Tilføj ingredienser</span>
-        <div class="search">
-          <span data-icon="search"></span>
-          <input type="search" id="madret-search" placeholder="Søg efter ingrediens" aria-labelledby="madret-search-label" aria-controls="madret-results" autocomplete="off" enterkeyhint="done">
-          <button type="button" class="icon-btn" id="madret-search-clear" aria-label="Ryd søgning" hidden><span data-icon="x"></span></button>
+        <div class="search-row">
+          <div class="search">
+            <span data-icon="search"></span>
+            <input type="search" id="madret-search" placeholder="Søg efter ingrediens" aria-labelledby="madret-search-label" aria-controls="madret-results" autocomplete="off" enterkeyhint="done">
+            <button type="button" class="icon-btn" id="madret-search-clear" aria-label="Ryd søgning" hidden><span data-icon="x"></span></button>
+          </div>
+          <button type="button" class="btn btn-secondary browse-toggle" id="madret-browse" aria-expanded="false" aria-controls="madret-results"><span data-icon="list"></span>Alle</button>
+        </div>
+        <div class="browse-sort" id="madret-browse-sort" role="group" aria-label="Sortér ingredienser" hidden>
+          <span>Sortér:</span>
+          <button type="button" class="chip" data-sort="navn">Navn</button>
+          <button type="button" class="chip" data-sort="nyeste">Senest oprettet</button>
         </div>
         <ul class="results" id="madret-results" hidden></ul>
       </div>
@@ -221,6 +223,10 @@ npm run dev</pre>
 
     <!-- Trin 1: vælg ret -->
     <div class="sheet-scroll" id="meal-step-list">
+      <div class="search meal-search" id="meal-search-wrap" hidden>
+        <span data-icon="search"></span>
+        <input type="search" id="meal-search" placeholder="Søg i madretter" aria-label="Søg i madretter" autocomplete="off" enterkeyhint="search">
+      </div>
       <ul class="options" id="meal-options"></ul>
     </div>
 

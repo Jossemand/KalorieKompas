@@ -1,6 +1,6 @@
 import { DAYS, MEALS, store, subscribe, billedeUrl, saveKalorieMaal, setMadretOpdeling, setMeal } from "../state.js";
 import { icon, MEAL_ICONS } from "../lib/icons.js";
-import { escapeHtml, formatGram, formatKcal, parseDecimal, parsePositive, toInputValue } from "../lib/format.js";
+import { escapeHtml, formatGram, formatKcal, parseDecimal, parsePositive, searchByName, toInputValue } from "../lib/format.js";
 import { dishWeight, entryNutrition, formatAmount, formatPortionCount, formatPortions, kcalPerPortion } from "../lib/portion.js";
 import { macrosHtml } from "../lib/templates.js";
 import { openSheet, setBusy, showError, toast } from "../lib/ui.js";
@@ -28,6 +28,7 @@ export function setupUgeplan(){
   });
 
   $("meal-options").addEventListener("click", onOptionClick);
+  $("meal-search").addEventListener("input", renderOptions);
   $("meal-back").addEventListener("click", showListStep);
 
   const amountForm = $("meal-step-amount");
@@ -155,13 +156,20 @@ function showListStep(){
   $("meal-back").hidden = true;
   $("meal-step-amount").hidden = true;
   $("meal-step-list").hidden = false;
+  $("meal-search").value = "";
   renderOptions();
   $("meal-step-list").scrollTop = 0;
 }
 
+// Alle færdige retter kan vælges til alle måltider; kladder vises ikke
 function renderOptions(){
-  const { maaltid, entry } = picker;
-  const dishes = store.madretter.filter(d => d.kategori === maaltid);
+  const { entry } = picker;
+  const all = store.madretter
+    .filter(d => !d.kladde)
+    .sort((a, b) => a.navn.localeCompare(b.navn, "da"));
+  const query = $("meal-search").value;
+  $("meal-search-wrap").hidden = all.length <= 5;
+  const dishes = searchByName(all, query);
 
   const options = dishes.map(dish => {
     const selected = entry?.madret_id === dish.id;
@@ -183,13 +191,18 @@ function renderOptions(){
       </li>`;
   });
 
-  const empty = dishes.length ? "" : `
-    <li class="empty">
-      <span class="empty-icon">${icon(MEAL_ICONS[maaltid], 28)}</span>
-      <p class="empty-title">Ingen retter under ${maaltid.toLowerCase()}</p>
-      <p>Opret en madret i kategorien, så kan du vælge den her.</p>
-      <button type="button" class="btn btn-primary" data-create>${icon("plus")}Opret madret</button>
-    </li>`;
+  let empty = "";
+  if (all.length === 0) {
+    empty = `
+      <li class="empty">
+        <span class="empty-icon">${icon("cooking-pot", 28)}</span>
+        <p class="empty-title">Ingen madretter endnu</p>
+        <p>Opret en madret, så kan du vælge den her.</p>
+        <button type="button" class="btn btn-primary" data-create>${icon("plus")}Opret madret</button>
+      </li>`;
+  } else if (dishes.length === 0) {
+    empty = `<li class="results-empty">Ingen madretter matcher "${escapeHtml(query)}".</li>`;
+  }
 
   $("meal-options").innerHTML = options.join("") + empty;
 }
@@ -198,7 +211,7 @@ function onOptionClick(event){
   if (event.target.closest("[data-create]")) {
     $("meal-sheet").close();
     showTab("madretter");
-    openBuilder(picker.maaltid);
+    openBuilder();
     return;
   }
   const button = event.target.closest("[data-option]");

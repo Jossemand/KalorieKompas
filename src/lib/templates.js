@@ -9,6 +9,11 @@ export function macrosHtml({ protein, fedt, kulhydrat }){
   </div>`;
 }
 
+// Producenten vises som lille tekst efter en ingrediens' navn
+export function brandHtml(ingrediens){
+  return ingrediens?.producent ? `<span class="brand-text">${escapeHtml(ingrediens.producent)}</span>` : "";
+}
+
 export function emptyStateHtml({ tag = "div", iconName, title, text, action = "" }){
   return `<${tag} class="empty" style="grid-column: 1 / -1">
     <span class="empty-icon">${icon(iconName, 28)}</span>

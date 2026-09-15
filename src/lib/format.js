@@ -35,15 +35,15 @@ export function normalize(value){
   return String(value ?? "").toLocaleLowerCase("da").normalize("NFD").replace(/[̀-ͯ]/g, "");
 }
 
-// Alle søgeord skal indgå i navnet. Navne der starter med søgningen sorteres først
+// Alle søgeord skal indgå i navnet eller producenten. Navne der starter med søgningen sorteres først
 export function searchByName(items, query){
   const q = normalize(query).trim();
   if (!q) return items;
   const terms = q.split(/\s+/);
   const rank = name => (name.startsWith(q) ? 0 : name.includes(` ${q}`) ? 1 : 2);
   return items
-    .map(item => ({ item, name: normalize(item.navn) }))
-    .filter(({ name }) => terms.every(term => name.includes(term)))
+    .map(item => ({ item, name: normalize(item.navn), text: normalize(`${item.navn} ${item.producent ?? ""}`) }))
+    .filter(({ text }) => terms.every(term => text.includes(term)))
     .sort((a, b) => rank(a.name) - rank(b.name) || a.item.navn.localeCompare(b.item.navn, "da"))
     .map(({ item }) => item);
 }

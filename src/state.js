@@ -7,7 +7,7 @@ export const MEALS = ["Morgenmad", "Frokost", "Aftensmad", "Snack"];
 export const store = {
   loaded: false,
   ingredienser: [],
-  madretter: [],   // inkl. beregnede felter: kcal, protein, fedt, kulhydrat, raa_vaegt_g
+  madretter: [],   // inkl. kladder og beregnede felter: kcal, protein, fedt, kulhydrat, raa_vaegt_g
   ugeplan: {},     // `${dag}|${maaltid}` -> { madret_id, maengde, enhed }
   kalorieMaal: 2000,
 };
@@ -71,6 +71,13 @@ export async function addIngrediens(row){
   notify();
 }
 
+export async function updateIngrediens(id, row){
+  unwrap(await db.from("ingredienser").update(row).eq("id", id), "Kunne ikke gemme ingrediensen");
+  // Navn og næringsindhold indgår i madretterne, så de skal også hentes igen
+  await Promise.all([loadIngredienser(), loadMadretter()]);
+  notify();
+}
+
 export async function deleteIngrediens(id){
   unwrap(await db.from("ingredienser").delete().eq("id", id), "Kunne ikke slette ingrediensen");
   // Databasen fjerner også ingrediensen fra madretter, så de skal hentes igen
@@ -78,14 +85,14 @@ export async function deleteIngrediens(id){
   notify();
 }
 
-/* ---------- Madretter ---------- */
+/* ---------- Madretter og kladder ---------- */
 const MADRET_SELECT = `
-  id, navn, kategori, created_at, billede_sti, portioner, faerdig_vaegt_g,
+  id, navn, created_at, kladde, billede_sti, portioner, faerdig_vaegt_g,
   madret_ingredienser (
     id,
     maengde_g,
     ingrediens_id,
-    ingredienser ( navn, kcal_100g, protein_100g, fedt_100g, kulhydrat_100g )
+    ingredienser ( navn, producent, kcal_100g, protein_100g, fedt_100g, kulhydrat_100g )
   )
 `;
 
@@ -100,6 +107,19 @@ async function loadMadretter(){
 
 const linkRows = (madretId, items) =>
   items.map(item => ({ madret_id: madretId, ingrediens_id: item.ingrediens.id, maengde_g: item.maengde_g }));
+
+// Erstat rettens ingredienser. De nye indsættes, før de gamle slettes, så retten aldrig står uden ingredienser, hvis noget fejler
+async function replaceLinks(madretId, items){
+  const keep = items.length
+    ? unwrap(await db
+      .from("madret_ingredienser")
+      .insert(linkRows(madretId, items))
+      .select("id"), "Kunne ikke gemme ingredienserne").map(row => row.id)
+    : [];
+  let query = db.from("madret_ingredienser").delete().eq("madret_id", madretId);
+  if (keep.length) query = query.not("id", "in", `(${keep.join(",")})`);
+  unwrap(await query, "Kunne ikke fjerne de gamle ingredienser");
+}
 
 // Billedet må ikke forhindre, at resten af retten bliver gemt – fejlen returneres i stedet
 async function applyBillede(madretId, { billede, fjernBillede, oldSti }){
@@ -117,46 +137,38 @@ async function applyBillede(madretId, { billede, fjernBillede, oldSti }){
   }
 }
 
-// Returnerer { billedeFejl }: retten gemmes, selvom billedet ikke kan uploades
-export async function addMadret({ navn, kategori, portioner = null, faerdig_vaegt_g = null, items, billede = null }){
+// Ny madret eller kladde. Returnerer { id, billedeFejl }: retten gemmes, selvom billedet ikke kan uploades
+export async function addMadret({ navn, portioner = null, faerdig_vaegt_g = null, items, billede = null, kladde = false }){
   const [madret] = unwrap(await db
     .from("madretter")
-    .insert([{ navn, kategori, portioner, faerdig_vaegt_g }])
+    .insert([{ navn, portioner, faerdig_vaegt_g, kladde }])
     .select(), "Kunne ikke gemme madretten");
-  const { error } = await db.from("madret_ingredienser").insert(linkRows(madret.id, items));
-  if (error) {
-    await db.from("madretter").delete().eq("id", madret.id); // efterlad ikke en madret uden ingredienser
-    throw new Error(`Kunne ikke gemme ingredienserne: ${error.message}`);
+  try {
+    await replaceLinks(madret.id, items);
+  } catch (err) {
+    await db.from("madretter").delete().eq("id", madret.id); // efterlad ikke en halv madret
+    throw err;
   }
 
   const billedeFejl = await applyBillede(madret.id, { billede });
   await loadMadretter();
   notify();
-  return { billedeFejl };
+  return { id: madret.id, billedeFejl };
 }
 
-export async function updateMadret({ id, navn, kategori, portioner = null, faerdig_vaegt_g = null, items, billede = null, fjernBillede = false }){
+// Gemmer en eksisterende ret eller kladde. kladde: false gør en kladde til en rigtig madret
+export async function updateMadret({ id, navn, portioner = null, faerdig_vaegt_g = null, items, billede = null, fjernBillede = false, kladde = false }){
   const oldSti = store.madretter.find(d => d.id === id)?.billede_sti;
   unwrap(await db
     .from("madretter")
-    .update({ navn, kategori, portioner, faerdig_vaegt_g })
+    .update({ navn, portioner, faerdig_vaegt_g, kladde })
     .eq("id", id), "Kunne ikke gemme madretten");
-
-  // Indsæt de nye ingrediensrækker, før de gamle slettes, så retten aldrig står uden ingredienser, hvis noget fejler
-  const inserted = unwrap(await db
-    .from("madret_ingredienser")
-    .insert(linkRows(id, items))
-    .select("id"), "Kunne ikke gemme ingredienserne");
-  unwrap(await db
-    .from("madret_ingredienser")
-    .delete()
-    .eq("madret_id", id)
-    .not("id", "in", `(${inserted.map(row => row.id).join(",")})`), "Kunne ikke fjerne de gamle ingredienser");
+  await replaceLinks(id, items);
 
   const billedeFejl = await applyBillede(id, { billede, fjernBillede, oldSti });
   await loadMadretter();
   notify();
-  return { billedeFejl };
+  return { id, billedeFejl };
 }
 
 // Gem portioner og/eller færdigvægt på en ret (fx når de angives fra ugeplanen)

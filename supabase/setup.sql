@@ -108,5 +108,17 @@ alter table ugeplan add column if not exists enhed text check (enhed in ('g', 'p
 alter table ugeplan drop constraint if exists ugeplan_maengde_og_enhed;
 alter table ugeplan add constraint ugeplan_maengde_og_enhed check ((maengde is null) = (enhed is null));
 
+-- ============================================================
+-- Kladder, producent og retter uden kategori (tilføjet senere). Hele scriptet kan køres igen.
+-- ============================================================
+-- Retter kan bruges til alle måltider, så kategori er ikke længere påkrævet (eksisterende værdier bevares)
+alter table madretter alter column kategori drop not null;
+
+-- Ufærdige retter gemmes som kladder. De vises kun i listen over madretter, ikke i ugeplanen
+alter table madretter add column if not exists kladde boolean not null default false;
+
+-- Producent/mærke, fx fra Open Food Facts
+alter table ingredienser add column if not exists producent text;
+
 -- Bed API'et om at opdage de nye kolonner med det samme
 notify pgrst, 'reload schema';

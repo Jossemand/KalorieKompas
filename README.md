@@ -60,6 +60,14 @@ er bygget endnu (se "Kendte begrænsninger" nedenfor).
     eller færdigvægt, kan de angives direkte i ugeplanen og gemmes på retten. Madretter
     åbnes ved tryk på kortet og redigeres i samme bygger, som bruges til at oprette dem.
     Mangler databasen nye kolonner (setup.sql ikke kørt igen), viser appen en besked om det.
+11. **Kladder i databasen, ikke i browseren.** Lukkes byggeren for en ny ret (eller en kladde)
+    med ændringer, gemmes den som `madretter.kladde = true`, så den kan fortsættes på en
+    anden enhed. Kladder vises med stiplet kant i listen, men aldrig i ugeplanen. En tømt
+    kladde slettes. "Ny madret" starter altid forfra. Ændringer i en færdig ret gemmes kun
+    med "Gem ændringer".
+12. **Retter har ingen kategori** – alle retter kan vælges til alle måltider, og valg-arket
+    i ugeplanen har søgning. Ingredienser kan redigeres (tryk på kortet), har en valgfri
+    producent, og byggeren kan vise alle ingredienser sorteret efter navn eller senest oprettet.
 
 ## Filer
 
@@ -85,11 +93,13 @@ er bygget endnu (se "Kendte begrænsninger" nedenfor).
 ```
 ingredienser
   id uuid pk, navn text, barcode text, kcal_100g numeric,
-  protein_100g numeric, fedt_100g numeric, kulhydrat_100g numeric, created_at
+  protein_100g numeric, fedt_100g numeric, kulhydrat_100g numeric, created_at,
+  producent text  -- valgfri, fx fra Open Food Facts
 
 madretter
-  id uuid pk, navn text, kategori text (Morgenmad|Frokost|Aftensmad|Snack), created_at,
-  billede_sti text, portioner numeric, faerdig_vaegt_g numeric  -- de tre sidste er valgfrie
+  id uuid pk, navn text, created_at, kladde boolean (default false),
+  billede_sti text, portioner numeric, faerdig_vaegt_g numeric,  -- valgfrie
+  kategori text  -- ubrugt: retter kan bruges til alle måltider (kolonnen er bevaret, ikke slettet)
 
 madret_ingredienser  (join-tabel, mange-til-mange med mængde)
   id uuid pk, madret_id -> madretter.id (cascade delete),

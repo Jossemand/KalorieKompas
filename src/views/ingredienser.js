@@ -1,7 +1,7 @@
-import { store, subscribe, addIngrediens, deleteIngrediens } from "../state.js";
+import { store, subscribe, addIngrediens, updateIngrediens, deleteIngrediens } from "../state.js";
 import { icon } from "../lib/icons.js";
 import { escapeHtml, formatKcal, highlight, parseDecimal, searchByName, toInputValue } from "../lib/format.js";
-import { emptyStateHtml, macrosHtml } from "../lib/templates.js";
+import { brandHtml, emptyStateHtml, macrosHtml } from "../lib/templates.js";
 import { confirmDialog, openSheet, setBusy, showError, toast } from "../lib/ui.js";
 import { setupScanner, startScanner } from "../scanner.js";
 
@@ -9,14 +9,15 @@ const $ = id => document.getElementById(id);
 const FIELDS = { kcal: "ingrediens-kcal", protein: "ingrediens-protein", fedt: "ingrediens-fedt", kulhydrat: "ingrediens-kulhydrat" };
 
 let query = "";
+let editingId = null;  // id på ingrediensen, der redigeres – null betyder ny ingrediens
 let lookupSession = 0; // så et sent svar fra Open Food Facts ikke overskriver en nyere indtastning
 
 export function setupIngredienser(){
   $("btn-scan").addEventListener("click", startScanner);
-  $("btn-add-ingrediens").addEventListener("click", openForm);
+  $("btn-add-ingrediens").addEventListener("click", () => openForm());
   setupScanner({
     onDetected: barcode => { openForm(); lookupBarcode(barcode); },
-    onManual: openForm,
+    onManual: () => openForm(),
   });
 
   const search = $("ingredienser-search");
@@ -45,7 +46,7 @@ function render(){
 
   const all = store.ingredienser;
   $("ingredienser-sub").textContent = all.length
-    ? `${all.length} ${all.length === 1 ? "ingrediens" : "ingredienser"} i din database`
+    ? `${all.length} ${all.length === 1 ? "ingrediens" : "ingredienser"} · tryk for at redigere`
     : "Scan en vare eller tilføj den manuelt";
 
   if (all.length === 0) {
@@ -67,7 +68,7 @@ function render(){
   list.innerHTML = items.map(ing => `
     <li class="item card" data-id="${ing.id}">
       <div class="item-main">
-        <p class="item-title">${highlight(ing.navn, query)}</p>
+        <p class="item-title"><button type="button" class="item-open">${highlight(ing.navn, query)}</button>${brandHtml(ing)}</p>
         ${macrosHtml({ protein: ing.protein_100g, fedt: ing.fedt_100g, kulhydrat: ing.kulhydrat_100g })}
       </div>
       <div class="item-kcal"><strong>${formatKcal(ing.kcal_100g)}</strong><span>kcal/100 g</span></div>
@@ -76,11 +77,12 @@ function render(){
 }
 
 async function onListClick(event){
-  const button = event.target.closest("[data-delete]");
-  if (!button) return;
-  const ing = store.ingredienser.find(i => i.id === button.closest("[data-id]").dataset.id);
-  const usedIn = store.madretter.filter(m => m.madret_ingredienser.some(row => row.ingrediens_id === ing.id)).length;
+  const row = event.target.closest("[data-id]");
+  const ing = row && store.ingredienser.find(i => i.id === row.dataset.id);
+  if (!ing) return;
+  if (!event.target.closest("[data-delete]")) return openForm(ing);
 
+  const usedIn = store.madretter.filter(m => m.madret_ingredienser.some(link => link.ingrediens_id === ing.id)).length;
   const confirmed = await confirmDialog({
     title: `Slet ${ing.navn}?`,
     message: usedIn
@@ -97,15 +99,34 @@ async function onListClick(event){
   }
 }
 
-/* ---------- Formular ---------- */
-function openForm(){
+/* ---------- Formular: ny eller rediger ---------- */
+function openForm(ing = null){
   lookupSession++;
+  editingId = ing?.id ?? null;
   const form = $("ingrediens-form");
   form.reset();
-  $("ingrediens-barcode").value = ""; // skjulte felter nulstilles ikke af reset()
   form.querySelectorAll(".is-invalid").forEach(el => el.classList.remove("is-invalid"));
+  $("ingrediens-barcode").value = ing?.barcode ?? ""; // skjulte felter nulstilles ikke af reset()
+  $("ingrediens-sheet-title").textContent = ing ? "Rediger ingrediens" : "Ny ingrediens";
+  $("ingrediens-submit").textContent = ing ? "Gem ændringer" : "Gem ingrediens";
+  if (ing) {
+    $("ingrediens-navn").value = ing.navn;
+    $("ingrediens-producent").value = ing.producent ?? "";
+    $(FIELDS.kcal).value = toInputValue(ing.kcal_100g);
+    $(FIELDS.protein).value = toInputValue(ing.protein_100g);
+    $(FIELDS.fedt).value = toInputValue(ing.fedt_100g);
+    $(FIELDS.kulhydrat).value = toInputValue(ing.kulhydrat_100g);
+  }
   setLookup(null);
   openSheet($("ingrediens-sheet"));
+}
+
+// Producenten: brand_owner, hvis Open Food Facts har den. Ellers det sidste i "brands", hvor
+// mærket typisk står først og firmaet sidst ("Nutella, Ferrero" → Ferrero, "Arla, Arla Foods" → Arla Foods)
+function producerFrom(product){
+  if (product.brand_owner?.trim()) return product.brand_owner.trim();
+  const brands = String(product.brands ?? "").split(",").map(brand => brand.trim()).filter(Boolean);
+  return brands.at(-1) ?? "";
 }
 
 async function lookupBarcode(barcode){
@@ -113,7 +134,7 @@ async function lookupBarcode(barcode){
   $("ingrediens-barcode").value = barcode;
   setLookup("loading", "Henter produkt fra Open Food Facts…", barcode);
   try {
-    const url = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json?fields=product_name,product_name_da,nutriments`;
+    const url = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json?fields=product_name,product_name_da,brands,brand_owner,nutriments`;
     const data = await (await fetch(url)).json();
     if (session !== lookupSession) return;
 
@@ -125,6 +146,7 @@ async function lookupBarcode(barcode){
     const product = data.product;
     const n = product.nutriments || {};
     $("ingrediens-navn").value = product.product_name_da || product.product_name || "";
+    $("ingrediens-producent").value = producerFrom(product);
     $(FIELDS.kcal).value = toInputValue(kcalPer100g(n));
     $(FIELDS.protein).value = toInputValue(n.proteins_100g);
     $(FIELDS.fedt).value = toInputValue(n.fat_100g);
@@ -174,19 +196,22 @@ async function onSubmit(event){
     return;
   }
 
+  const row = {
+    navn,
+    producent: $("ingrediens-producent").value.trim() || null,
+    barcode: $("ingrediens-barcode").value || null,
+    kcal_100g: values.kcal,
+    protein_100g: values.protein ?? 0,
+    fedt_100g: values.fedt ?? 0,
+    kulhydrat_100g: values.kulhydrat ?? 0,
+  };
   const submit = $("ingrediens-submit");
   setBusy(submit, true);
   try {
-    await addIngrediens({
-      navn,
-      barcode: $("ingrediens-barcode").value || null,
-      kcal_100g: values.kcal,
-      protein_100g: values.protein ?? 0,
-      fedt_100g: values.fedt ?? 0,
-      kulhydrat_100g: values.kulhydrat ?? 0,
-    });
+    if (editingId) await updateIngrediens(editingId, row);
+    else await addIngrediens(row);
     $("ingrediens-sheet").close();
-    toast(`${navn} er gemt`);
+    toast(editingId ? `Ændringerne i ${navn} er gemt` : `${navn} er gemt`);
   } catch (err) {
     showError(err);
   } finally {
