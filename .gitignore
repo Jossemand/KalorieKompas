@@ -1,0 +1,17 @@
+# Hemmeligheder / lokal konfiguration
+.env
+.env.*
+!.env.example
+
+# Build-output
+dist/
+
+# Node
+node_modules/
+
+# Hosting-CLI'er
+.vercel/
+.netlify/
+
+# OS / editor
+.DS_Store

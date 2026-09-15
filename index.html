@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mad &amp; Kalorier</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;600;700;900&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<div id="setup-banner" hidden>
+  <h2>Konfiguration mangler</h2>
+  <p>Supabase-URL og anon key blev ikke fundet. De læses fra miljøvariablerne <code style="display:inline">VITE_SUPABASE_URL</code> og <code style="display:inline">VITE_SUPABASE_ANON_KEY</code>. Lokalt:</p>
+  <code>cp .env.example .env   # udfyld værdierne
+npm run dev</code>
+  <p>På Vercel sættes de to variabler under Project Settings → Environment Variables. Værdierne findes under Project Settings → API Keys i Supabase. Kør også <code style="display:inline">supabase/setup.sql</code> i SQL-editoren, så tabellerne findes.</p>
+</div>
+
+<div id="app" hidden>
+  <header>
+    <h1>Mad &amp; Kalorier</h1>
+    <span class="tagline">Din egen ingrediens- og madplansdatabase</span>
+  </header>
+
+  <nav>
+    <button class="tab-btn active" data-tab="ingredienser">Ingredienser</button>
+    <button class="tab-btn" data-tab="madretter">Madretter</button>
+    <button class="tab-btn" data-tab="ugeplan">Ugeplan</button>
+  </nav>
+
+  <main>
+
+    <!-- INGREDIENSER -->
+    <section id="tab-ingredienser" class="active">
+      <h2>Tilføj ingrediens</h2>
+      <p class="sub">Scan en stregkode for at slå produktet op i Open Food Facts, eller udfyld manuelt.</p>
+
+      <div class="panel">
+        <div class="btn-row" style="margin-bottom:16px;">
+          <button type="button" class="secondary" id="btn-scan">Scan stregkode</button>
+        </div>
+        <form id="ingrediens-form">
+          <input type="hidden" id="ingrediens-barcode">
+          <div class="field">
+            <label for="ingrediens-navn">Navn</label>
+            <input id="ingrediens-navn" required>
+          </div>
+          <div class="row-fields">
+            <div class="field">
+              <label for="ingrediens-kcal">Kcal / 100g</label>
+              <input id="ingrediens-kcal" type="number" step="0.1" required>
+            </div>
+            <div class="field">
+              <label for="ingrediens-protein">Protein / 100g</label>
+              <input id="ingrediens-protein" type="number" step="0.1">
+            </div>
+            <div class="field">
+              <label for="ingrediens-fedt">Fedt / 100g</label>
+              <input id="ingrediens-fedt" type="number" step="0.1">
+            </div>
+            <div class="field">
+              <label for="ingrediens-kulhydrat">Kulhydrat / 100g</label>
+              <input id="ingrediens-kulhydrat" type="number" step="0.1">
+            </div>
+          </div>
+          <button type="submit" class="primary">Gem ingrediens</button>
+        </form>
+      </div>
+
+      <h2>Dine ingredienser</h2>
+      <ul class="list" id="ingredienser-list"></ul>
+    </section>
+
+    <!-- MADRETTER -->
+    <section id="tab-madretter">
+      <h2>Byg en madret</h2>
+      <p class="sub">Sæt ingredienser og mængder sammen til en ret. Kalorier beregnes automatisk.</p>
+
+      <div class="panel">
+        <div class="row-fields" style="grid-template-columns:2fr 1fr;">
+          <div class="field">
+            <label for="madret-navn">Navn på madret</label>
+            <input id="madret-navn">
+          </div>
+          <div class="field">
+            <label for="madret-kategori">Kategori</label>
+            <select id="madret-kategori">
+              <option>Morgenmad</option>
+              <option>Frokost</option>
+              <option>Aftensmad</option>
+              <option>Snack</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="ingred-row">
+          <div class="field" style="margin-bottom:0;">
+            <label>Ingrediens</label>
+            <select id="madret-ingrediens-select"></select>
+          </div>
+          <div class="field" style="margin-bottom:0;">
+            <label>Mængde (g)</label>
+            <input id="madret-maengde" type="number" step="1" value="100">
+          </div>
+          <div></div>
+          <button type="button" class="secondary" id="btn-add-ingrediens">Tilføj</button>
+        </div>
+
+        <div class="added-list" id="madret-added-list"></div>
+        <div class="total-line" id="madret-total-line">Total: 0 kcal</div>
+
+        <div class="btn-row" style="margin-top:16px;">
+          <button type="button" class="primary" id="btn-save-madret">Gem madret</button>
+        </div>
+      </div>
+
+      <h2>Dine madretter</h2>
+      <div id="madretter-list"></div>
+    </section>
+
+    <!-- UGEPLAN -->
+    <section id="tab-ugeplan">
+      <h2>Ugeplan</h2>
+      <p class="sub">Vælg en madret for hvert måltid. Kalorier og dagstotal opdateres automatisk.</p>
+
+      <div class="goal-field">
+        <label for="kalorie-maal"><strong>Kaloriemål pr. dag</strong></label>
+        <input id="kalorie-maal" type="number" step="10">
+        <span style="font-size:0.8rem;color:var(--muted);">gemmes automatisk</span>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table class="plan" id="ugeplan-table"></table>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div id="scanner-modal">
+  <div id="reader"></div>
+  <button type="button" class="secondary" style="background:#fff;" id="btn-cancel-scan">Annuller scanning</button>
+</div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
