@@ -1,9 +1,10 @@
 import {
-  MEALS, store, subscribe, addMadret, deleteMadret, sumNutrition, billedeUrl, setMadretBillede, removeMadretBillede,
+  MEALS, store, subscribe, addMadret, updateMadret, deleteMadret, sumNutrition, billedeUrl, setMadretBillede, removeMadretBillede,
 } from "../state.js";
 import { prepareImage } from "../lib/image.js";
 import { icon, MEAL_ICONS } from "../lib/icons.js";
-import { escapeHtml, formatKcal, highlight, parseDecimal, searchByName, toInputValue } from "../lib/format.js";
+import { escapeHtml, formatGram, formatKcal, highlight, parseDecimal, parsePositive, searchByName, toInputValue } from "../lib/format.js";
+import { formatPortions, kcalPerPortion } from "../lib/portion.js";
 import { emptyStateHtml, macrosHtml } from "../lib/templates.js";
 import { confirmDialog, openSheet, setBusy, showError, toast } from "../lib/ui.js";
 
@@ -13,9 +14,10 @@ const STEP_G = 10;
 const finePointer = matchMedia("(pointer: fine)"); // mus/trackpad – på touch skal Enter ikke tilføje noget
 
 let filter = "Alle";
-let pending = [];    // kladde til ny madret: [{ ingrediens, maengde_g }]
-let highlighted = 0; // valgt søgeresultat ved piletaster
-let draftPhoto = null;  // kladdens billede: { blob, url }
+let editingId = null;   // id på retten, der redigeres – null betyder ny madret
+let pending = [];       // ingredienser i byggeren: [{ ingrediens, maengde_g }]
+let highlighted = 0;    // valgt søgeresultat ved piletaster
+let draftPhoto = null;  // billedet i byggeren: { url, blob } – blob er null for rettens eksisterende billede
 let photoDishId = null; // madretten, der vises i billede-arket
 
 export function setupMadretter(){
@@ -42,6 +44,8 @@ export function setupMadretter(){
   });
   $("madret-pending").addEventListener("click", onPendingClick);
   $("madret-pending").addEventListener("input", onPendingInput);
+  $("madret-portioner").addEventListener("input", updateTotals);
+  $("madret-vaegt").addEventListener("input", updateTotals);
   $("madret-form").addEventListener("submit", onSubmit);
   setupPhotos();
   subscribe(render);
@@ -52,7 +56,7 @@ function render(){
   if (!store.loaded) return;
   const all = store.madretter;
   $("madretter-sub").textContent = all.length
-    ? `${all.length} ${all.length === 1 ? "madret" : "madretter"}`
+    ? `${all.length} ${all.length === 1 ? "madret" : "madretter"} · tryk for at åbne`
     : "Retter bygget af dine ingredienser";
 
   const filterBar = $("madret-filter");
@@ -94,21 +98,20 @@ function render(){
     const names = dish.madret_ingredienser.map(row => row.ingredienser?.navn).filter(Boolean).join(", ");
     const name = escapeHtml(dish.navn);
     const photo = billedeUrl(dish.billede_sti);
-    const photoButton = store.billederKlar
-      ? `<button type="button" class="icon-btn" data-photo aria-label="${photo ? "Skift billede af" : "Tilføj billede til"} ${name}">${icon(photo ? "camera" : "image-plus")}</button>`
-      : "";
+    const meta = dishMeta(dish);
     return `
       <article class="dish card" data-id="${dish.id}">
-        ${photo ? `<button type="button" class="dish-photo" data-photo aria-label="Billede af ${name}"><img src="${escapeHtml(photo)}" alt="" loading="lazy" decoding="async"></button>` : ""}
+        ${photo ? `<div class="dish-photo"><img src="${escapeHtml(photo)}" alt="" loading="lazy" decoding="async"></div>` : ""}
         <div class="dish-top">
           <span class="badge" data-cat="${dish.kategori}">${icon(MEAL_ICONS[dish.kategori], 14)}${dish.kategori}</span>
           <div class="dish-actions">
-            ${photoButton}
+            <button type="button" class="icon-btn" data-photo aria-label="${photo ? "Skift billede af" : "Tilføj billede til"} ${name}">${icon(photo ? "camera" : "image-plus")}</button>
             <button type="button" class="icon-btn icon-btn-danger" data-delete aria-label="Slet ${name}">${icon("trash")}</button>
           </div>
         </div>
-        <h3 class="dish-title">${escapeHtml(dish.navn)}</h3>
+        <h3 class="dish-title"><button type="button" class="dish-open" data-open>${name}</button></h3>
         <p class="dish-ingredients">${escapeHtml(names || "Ingen ingredienser")}</p>
+        ${meta ? `<p class="dish-meta">${escapeHtml(meta)}</p>` : ""}
         <div class="dish-foot">
           <p class="dish-kcal"><strong>${formatKcal(dish.kcal)}</strong> kcal</p>
           ${macrosHtml(dish)}
@@ -117,18 +120,24 @@ function render(){
   }).join("");
 }
 
+function dishMeta(dish){
+  const parts = [];
+  if (Number(dish.portioner) > 0) parts.push(`${formatPortions(Number(dish.portioner))} (${formatKcal(kcalPerPortion(dish))} kcal/stk.)`);
+  if (Number(dish.faerdig_vaegt_g) > 0) parts.push(`${formatGram(dish.faerdig_vaegt_g)} g færdig`);
+  return parts.join(" · ");
+}
+
 async function onListClick(event){
   const newButton = event.target.closest("[data-new]");
   if (newButton) return openBuilder(newButton.dataset.new);
 
-  const photoButton = event.target.closest("[data-photo]");
-  if (photoButton) return openPhotoSheet(photoButton.closest("[data-id]").dataset.id);
+  const card = event.target.closest("[data-id]");
+  if (!card) return;
+  if (event.target.closest("[data-photo]")) return openPhotoSheet(card.dataset.id);
+  if (!event.target.closest("[data-delete]")) return openEditor(card.dataset.id);
 
-  const deleteButton = event.target.closest("[data-delete]");
-  if (!deleteButton) return;
-  const dish = store.madretter.find(d => d.id === deleteButton.closest("[data-id]").dataset.id);
-  const plannedCount = Object.values(store.ugeplan).filter(id => id === dish.id).length;
-
+  const dish = store.madretter.find(d => d.id === card.dataset.id);
+  const plannedCount = Object.values(store.ugeplan).filter(entry => entry.madret_id === dish.id).length;
   const confirmed = await confirmDialog({
     title: `Slet ${dish.navn}?`,
     message: plannedCount
@@ -145,16 +154,45 @@ async function onListClick(event){
   }
 }
 
-/* ---------- Byg ny madret ---------- */
-// Kladden bevares, hvis arket lukkes uden at gemme, så et fejltryk ikke sletter arbejdet
+/* ---------- Byg eller rediger en madret ---------- */
+// En kladde til en ny ret bevares, hvis arket lukkes uden at gemme, så et fejltryk ikke sletter arbejdet
 export function openBuilder(kategori){
+  const hasDraft = editingId === null && (pending.length > 0 || $("madret-navn").value.trim() || draftPhoto);
+  if (!hasDraft) resetForm(MEALS.includes(kategori) ? kategori : "Morgenmad");
+  editingId = null;
+  showBuilder();
+}
+
+export function openEditor(id){
+  const dish = store.madretter.find(d => d.id === id);
+  if (!dish) return;
+  resetForm(dish.kategori);
+  editingId = id;
+  $("madret-navn").value = dish.navn;
+  $("madret-portioner").value = toInputValue(dish.portioner);
+  $("madret-vaegt").value = toInputValue(dish.faerdig_vaegt_g);
+  pending = dish.madret_ingredienser.map(row => ({
+    ingrediens: store.ingredienser.find(i => i.id === row.ingrediens_id) ?? { id: row.ingrediens_id, ...row.ingredienser },
+    maengde_g: Number(row.maengde_g) || 0,
+  }));
+  const url = billedeUrl(dish.billede_sti);
+  draftPhoto = url ? { url, blob: null } : null;
+  showBuilder();
+}
+
+function resetForm(kategori){
   const form = $("madret-form");
-  const isEmptyDraft = pending.length === 0 && !$("madret-navn").value.trim() && !draftPhoto;
-  if (isEmptyDraft) {
-    form.reset();
-    const preset = MEALS.includes(kategori) ? kategori : "Morgenmad";
-    form.querySelector(`input[name="kategori"][value="${preset}"]`).checked = true;
-  }
+  form.reset();
+  form.querySelector(`input[name="kategori"][value="${kategori}"]`).checked = true;
+  form.querySelectorAll(".is-invalid").forEach(el => el.classList.remove("is-invalid"));
+  pending = [];
+  setDraftPhoto(null);
+}
+
+function showBuilder(){
+  const editing = editingId !== null;
+  $("madret-sheet-title").textContent = editing ? "Rediger madret" : "Ny madret";
+  $("madret-submit").textContent = editing ? "Gem ændringer" : "Gem madret";
   $("madret-search").value = "";
   renderResults();
   renderPending();
@@ -260,6 +298,19 @@ function updateTotals(){
   const total = sumNutrition(pending);
   $("madret-total-kcal").textContent = formatKcal(total.kcal);
   $("madret-total-macros").innerHTML = macrosHtml(total);
+
+  // Opdeling: vis kcal pr. portion og pr. 100 g ud fra de indtastede tal
+  const rawWeight = pending.reduce((sum, item) => sum + (item.maengde_g || 0), 0);
+  const portioner = parsePositive($("madret-portioner").value);
+  const vaegt = parsePositive($("madret-vaegt").value);
+  $("madret-vaegt").placeholder = rawWeight ? formatGram(rawWeight) : "0";
+
+  const facts = [];
+  if (portioner && total.kcal > 0) facts.push(`${formatKcal(total.kcal / portioner)} kcal pr. portion`);
+  const weight = vaegt ?? rawWeight;
+  if (weight > 0 && total.kcal > 0) facts.push(`${formatKcal((total.kcal / weight) * 100)} kcal pr. 100 g`);
+  const weightHelp = vaegt ? "" : `Vej hele retten efter tilberedning – ellers bruges ingrediensernes vægt (${formatGram(rawWeight)} g). `;
+  $("madret-opdeling-hint").textContent = weightHelp + facts.join(" · ");
 }
 
 function pendingItemFor(target){
@@ -300,6 +351,20 @@ function updateRow(row, item){
   updateTotals();
 }
 
+// Valgfrit tal over 0. Returnerer { value } eller null, hvis feltet er udfyldt forkert
+function readOptionalPositive(id, label){
+  const input = $(id);
+  const field = input.closest(".field");
+  field.classList.remove("is-invalid");
+  if (!input.value.trim()) return { value: null };
+  const value = parsePositive(input.value);
+  if (value) return { value };
+  field.classList.add("is-invalid");
+  input.focus();
+  toast(`${label} skal være et tal over 0`, { type: "error" });
+  return null;
+}
+
 async function onSubmit(event){
   event.preventDefault();
   const form = event.currentTarget;
@@ -321,21 +386,36 @@ async function onSubmit(event){
   if (pending.some(item => !(item.maengde_g > 0))) {
     return toast("Alle ingredienser skal have en mængde over 0 g", { type: "error" });
   }
+  const portioner = readOptionalPositive("madret-portioner", "Antal portioner");
+  if (!portioner) return;
+  const vaegt = readOptionalPositive("madret-vaegt", "Færdigvægten");
+  if (!vaegt) return;
 
   const submit = $("madret-submit");
+  const wasEditing = editingId !== null;
+  const payload = {
+    navn,
+    kategori,
+    portioner: portioner.value,
+    faerdig_vaegt_g: vaegt.value,
+    items: pending,
+    billede: draftPhoto?.blob ?? null,
+  };
+
   setBusy(submit, true);
   try {
-    const { billedeFejl } = await addMadret({ navn, kategori, items: pending, billede: draftPhoto?.blob });
-    pending = [];
-    setDraftPhoto(null);
-    form.reset();
+    const { billedeFejl } = wasEditing
+      ? await updateMadret({ id: editingId, ...payload, fjernBillede: !draftPhoto })
+      : await addMadret(payload);
+    editingId = null;
+    resetForm("Morgenmad");
     $("madret-sheet").close();
     if (filter !== "Alle" && filter !== kategori) {
-      filter = "Alle"; // vis den nye ret, selvom et andet filter var valgt
+      filter = "Alle"; // vis retten, selvom et andet filter var valgt
       render();
     }
     if (billedeFejl) showError(new Error(`${navn} er gemt, men billedet kom ikke med. ${billedeFejl.message}`));
-    else toast(`${navn} er gemt`);
+    else toast(wasEditing ? `Ændringerne i ${navn} er gemt` : `${navn} er gemt`);
   } catch (err) {
     showError(err);
   } finally {
@@ -345,8 +425,8 @@ async function onSubmit(event){
 
 /* ---------- Billeder ---------- */
 function setupPhotos(){
-  // Billede i byggeren til en ny ret
-  const pickDraft = () => { if (billederKlar()) $("madret-photo-input").click(); };
+  // Billede i byggeren
+  const pickDraft = () => $("madret-photo-input").click();
   $("madret-photo-pick").addEventListener("click", pickDraft);
   $("madret-photo-change").addEventListener("click", pickDraft);
   $("madret-photo-remove").addEventListener("click", () => setDraftPhoto(null));
@@ -360,7 +440,7 @@ function setupPhotos(){
     }
   });
 
-  // Billede af en eksisterende ret
+  // Hurtigt skift af billede direkte fra kortet
   $("billede-sheet-pick").addEventListener("click", () => $("billede-sheet-input").click());
   $("billede-sheet-input").addEventListener("change", event => {
     const file = takeFile(event.target);
@@ -383,14 +463,8 @@ function takeFile(input){
   return file;
 }
 
-function billederKlar(){
-  if (store.billederKlar) return true;
-  toast("Billeder er ikke slået til endnu – kør supabase/setup.sql igen i Supabase", { type: "error" });
-  return false;
-}
-
 function setDraftPhoto(blob){
-  if (draftPhoto) URL.revokeObjectURL(draftPhoto.url);
+  if (draftPhoto?.blob) URL.revokeObjectURL(draftPhoto.url);
   draftPhoto = blob ? { blob, url: URL.createObjectURL(blob) } : null;
   renderDraftPhoto();
 }

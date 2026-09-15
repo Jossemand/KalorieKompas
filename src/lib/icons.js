@@ -1,6 +1,6 @@
 import {
   createElement,
-  Camera, CalendarDays, Carrot, Check, ChevronRight, CircleAlert, CircleCheck, Coffee, Compass, Cookie,
+  Camera, CalendarDays, Carrot, Check, ChevronLeft, ChevronRight, CircleAlert, CircleCheck, Coffee, Compass, Cookie,
   CookingPot, ImagePlus, Keyboard, Minus, Plus, Sandwich, ScanBarcode, Search, SearchX, Soup, Target, Trash2, X,
 } from "lucide";
 
@@ -11,6 +11,7 @@ const ICONS = {
   "image-plus": ImagePlus,
   carrot: Carrot,
   check: Check,
+  "chevron-left": ChevronLeft,
   "chevron-right": ChevronRight,
   "circle-alert": CircleAlert,
   "circle-check": CircleCheck,

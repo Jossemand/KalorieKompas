@@ -181,6 +181,19 @@ npm run dev</pre>
       <div class="section-label"><span>I retten</span><span class="num" id="madret-count"></span></div>
       <ul class="pending-list" id="madret-pending"></ul>
       <p class="pending-empty" id="madret-pending-empty">Søg ovenfor for at tilføje ingredienser</p>
+
+      <div class="section-label"><span>Portioner og vægt</span><span class="optional">Valgfrit</span></div>
+      <div class="field-grid">
+        <label class="field">
+          <span class="field-label">Antal portioner</span>
+          <span class="input-unit"><input id="madret-portioner" inputmode="decimal" autocomplete="off" placeholder="Fx 4"><span>stk.</span></span>
+        </label>
+        <label class="field">
+          <span class="field-label">Færdigvægt</span>
+          <span class="input-unit"><input id="madret-vaegt" inputmode="decimal" autocomplete="off" placeholder="0"><span>g</span></span>
+        </label>
+      </div>
+      <p class="field-hint" id="madret-opdeling-hint"></p>
     </div>
     <footer class="sheet-foot">
       <div class="summary">
@@ -196,15 +209,62 @@ npm run dev</pre>
 <dialog class="sheet" id="meal-sheet" aria-labelledby="meal-sheet-title">
   <div class="sheet-body">
     <header class="sheet-head">
-      <div>
-        <p class="sheet-eyebrow" id="meal-sheet-day"></p>
-        <h2 class="sheet-title" id="meal-sheet-title" tabindex="-1" autofocus></h2>
+      <div class="sheet-head-main">
+        <button type="button" class="icon-btn sheet-back" id="meal-back" aria-label="Vælg en anden ret" hidden><span data-icon="chevron-left"></span></button>
+        <div>
+          <p class="sheet-eyebrow" id="meal-sheet-day"></p>
+          <h2 class="sheet-title" id="meal-sheet-title" tabindex="-1" autofocus></h2>
+        </div>
       </div>
       <button type="button" class="icon-btn" data-close aria-label="Luk"><span data-icon="x"></span></button>
     </header>
-    <div class="sheet-scroll">
+
+    <!-- Trin 1: vælg ret -->
+    <div class="sheet-scroll" id="meal-step-list">
       <ul class="options" id="meal-options"></ul>
     </div>
+
+    <!-- Trin 2: hvor meget spiser du? -->
+    <form class="meal-amount" id="meal-step-amount" novalidate hidden>
+      <div class="sheet-scroll">
+        <p class="amount-dish" id="amount-dish"></p>
+        <div class="segmented segmented-2" role="radiogroup" aria-label="Enhed">
+          <label class="segment"><input type="radio" name="enhed" value="g"><span>Gram</span></label>
+          <label class="segment"><input type="radio" name="enhed" value="portion"><span>Portioner</span></label>
+        </div>
+
+        <label class="field" id="amount-portioner-field" hidden>
+          <span class="field-label">Hvor mange portioner giver hele retten?</span>
+          <span class="input-unit"><input id="amount-portioner" inputmode="decimal" autocomplete="off" placeholder="Fx 4"><span>stk.</span></span>
+          <span class="field-hint">Gemmes på retten, så du kun skal angive det én gang</span>
+        </label>
+
+        <label class="field" id="amount-weight-field" hidden>
+          <span class="field-label">Færdigvægt for hele retten <span class="optional">(valgfri)</span></span>
+          <span class="input-unit"><input id="amount-weight" inputmode="decimal" autocomplete="off"><span>g</span></span>
+          <span class="field-hint" id="amount-weight-hint"></span>
+        </label>
+
+        <div class="field">
+          <span class="field-label" id="amount-label">Du spiser</span>
+          <div class="amount-row">
+            <button type="button" class="icon-btn icon-btn-soft" data-amount-step="-1" aria-label="Mindre"><span data-icon="minus"></span></button>
+            <span class="input-unit amount-input"><input id="amount-value" inputmode="decimal" autocomplete="off" aria-labelledby="amount-label"><span id="amount-unit">g</span></span>
+            <button type="button" class="icon-btn icon-btn-soft" data-amount-step="1" aria-label="Mere"><span data-icon="plus"></span></button>
+          </div>
+          <div class="amount-presets" id="amount-presets"></div>
+        </div>
+
+      </div>
+      <footer class="sheet-foot">
+        <div class="summary" aria-live="polite">
+          <span class="summary-kcal num"><span id="amount-kcal">0</span> <small>kcal</small></span>
+          <div id="amount-macros"></div>
+        </div>
+        <button type="button" class="icon-btn icon-btn-danger" id="amount-remove" aria-label="Fjern retten fra måltidet" hidden><span data-icon="trash"></span></button>
+        <button type="submit" class="btn btn-primary btn-lg" id="amount-submit">Gem</button>
+      </footer>
+    </form>
   </div>
 </dialog>
 

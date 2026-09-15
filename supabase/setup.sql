@@ -93,3 +93,20 @@ create policy "madret-billeder: upload" on storage.objects
 drop policy if exists "madret-billeder: slet" on storage.objects;
 create policy "madret-billeder: slet" on storage.objects
   for delete to anon, authenticated using (bucket_id = 'madret-billeder');
+
+-- ============================================================
+-- Portioner og mængder (tilføjet senere). Hele scriptet kan køres igen uden problemer.
+-- ============================================================
+-- Valgfri opdeling af en madret: antal portioner og vægten af den færdige ret.
+-- Uden færdigvægt regner appen med ingrediensernes samlede (rå) vægt.
+alter table madretter add column if not exists portioner numeric check (portioner > 0);
+alter table madretter add column if not exists faerdig_vaegt_g numeric check (faerdig_vaegt_g > 0);
+
+-- Hvor meget man spiser af retten i ugeplanen, i gram eller portioner. Tom = hele retten
+alter table ugeplan add column if not exists maengde numeric check (maengde > 0);
+alter table ugeplan add column if not exists enhed text check (enhed in ('g', 'portion'));
+alter table ugeplan drop constraint if exists ugeplan_maengde_og_enhed;
+alter table ugeplan add constraint ugeplan_maengde_og_enhed check ((maengde is null) = (enhed is null));
+
+-- Bed API'et om at opdage de nye kolonner med det samme
+notify pgrst, 'reload schema';

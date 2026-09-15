@@ -9,25 +9,9 @@ export function setupSheets(){
   });
 }
 
-// ?debug i adressen viser arkenes placering på skærmen – til fejlsøgning på telefoner
-const DEBUG = new URLSearchParams(location.search).has("debug");
-
 export function openSheet(dialog){
   dialog.querySelectorAll(".sheet-scroll").forEach(el => { el.scrollTop = 0; });
   if (!dialog.open) dialog.showModal();
-  if (DEBUG) setTimeout(() => reportSheetPosition(dialog), 700);
-}
-
-function reportSheetPosition(dialog){
-  const rect = dialog.getBoundingClientRect();
-  const visual = window.visualViewport;
-  const style = getComputedStyle(dialog);
-  toast([
-    `#${dialog.id} åben=${dialog.open}`,
-    `top ${Math.round(rect.top)} bund ${Math.round(rect.bottom)} højde ${Math.round(rect.height)}`,
-    `vindue ${innerHeight} synligt ${Math.round(visual?.height ?? -1)} offset ${Math.round(visual?.offsetTop ?? -1)}`,
-    `scroll ${Math.round(scrollY)} transform ${style.transform} display ${style.display}`,
-  ].join(" · "), { type: "error", duration: 20000 });
 }
 
 export function setBusy(button, busy){

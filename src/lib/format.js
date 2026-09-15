@@ -12,6 +12,12 @@ export function parseDecimal(value){
   return Number.isFinite(number) ? number : NaN;
 }
 
+// Et tal over 0 fra et inputfelt, ellers null (tomt eller ugyldigt)
+export function parsePositive(value){
+  const number = parseDecimal(value);
+  return Number.isFinite(number) && number > 0 ? number : null;
+}
+
 // Tal til et inputfelt med dansk decimalkomma
 export function toInputValue(value){
   if (value === null || value === undefined || value === "") return "";

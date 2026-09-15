@@ -52,8 +52,14 @@ er bygget endnu (se "Kendte begrænsninger" nedenfor).
 9. **Billeder af madretter i Supabase Storage.** Offentlig bucket `madret-billeder` og
    kolonnen `madretter.billede_sti` (stien i bucketten, ikke en URL). Billeder skaleres
    til maks. 1280 px og gemmes som JPEG i browseren før upload. Ny sti ved hver upload,
-   gamle filer slettes. Mangler kolonnen (setup.sql ikke kørt igen), virker appen stadig –
-   billedfunktionen er bare slået fra med en besked.
+   gamle filer slettes.
+10. **Portioner og mængder i ugeplanen.** En madret kan have antal portioner og færdigvægt
+    (vægten af den tilberedte ret – kogt pasta vejer mere end tørvaren). Uden færdigvægt
+    bruges ingrediensernes samlede vægt. I ugeplanen angives mængden i gram eller portioner;
+    kcal = mængde / færdigvægt (eller / portioner) × rettens kcal. Mangler retten portioner
+    eller færdigvægt, kan de angives direkte i ugeplanen og gemmes på retten. Madretter
+    åbnes ved tryk på kortet og redigeres i samme bygger, som bruges til at oprette dem.
+    Mangler databasen nye kolonner (setup.sql ikke kørt igen), viser appen en besked om det.
 
 ## Filer
 
@@ -82,7 +88,8 @@ ingredienser
   protein_100g numeric, fedt_100g numeric, kulhydrat_100g numeric, created_at
 
 madretter
-  id uuid pk, navn text, kategori text (Morgenmad|Frokost|Aftensmad|Snack), created_at
+  id uuid pk, navn text, kategori text (Morgenmad|Frokost|Aftensmad|Snack), created_at,
+  billede_sti text, portioner numeric, faerdig_vaegt_g numeric  -- de tre sidste er valgfrie
 
 madret_ingredienser  (join-tabel, mange-til-mange med mængde)
   id uuid pk, madret_id -> madretter.id (cascade delete),
@@ -90,7 +97,8 @@ madret_ingredienser  (join-tabel, mange-til-mange med mængde)
 
 ugeplan
   id uuid pk, dag text (Mandag..Søndag), maaltid text (samme 4 kategorier),
-  madret_id -> madretter.id (set null ved delete), unique(dag, maaltid)
+  madret_id -> madretter.id (set null ved delete), unique(dag, maaltid),
+  maengde numeric, enhed text (g|portion)  -- begge tomme = hele retten
 
 indstillinger
   id int pk (altid 1), kalorie_maal numeric  -- ét globalt dagligt kaloriemål
@@ -122,7 +130,7 @@ Env-variabler holder den ude af Git, men beskytter ikke data. Det gør kun RLS.
 - **Ingen automatiserede tests.**
 - **Ingen CI/CD er sat op endeles** — det er formentlig det næste skridt (se nedenfor).
 - **Ingen offline-håndtering.** Fejl vises som toasts, men der er ingen kø eller genforsøg.
-- **Madretter kan ikke redigeres** – kun oprettes og slettes.
+- **Ugeplanen er pr. ugedag, ikke pr. dato**, og har én madret pr. måltid.
 - **iPhones med flere linser kan ikke fokusere helt tæt på.** Stregkoden skal holdes
   ca. 15–20 cm fra kameraet (står også som hjælpetekst i scanneren).
 - Appen er **ikke testet i en rigtig browser** endnu (kun syntax-valideret). Første

@@ -390,6 +390,39 @@ mark{ background: none; color: var(--primary); font-weight: 800; }
 .option-photo img{ display: block; width: 100%; height: 100%; object-fit: cover; }
 .option-photo{ flex-shrink: 0; width: 44px; height: 44px; border-radius: 10px; }
 
+/* ---------- Åbn en madret ---------- */
+.dish{ position: relative; }
+/* Titlen er en knap, der dækker hele kortet; handlingsknapperne ligger ovenpå */
+.dish-open{
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.dish-open::after{ content: ""; position: absolute; inset: 0; border-radius: inherit; }
+.dish-open:focus-visible{ outline: none; }
+.dish:has(.dish-open:focus-visible){ outline: 3px solid color-mix(in srgb, var(--primary) 55%, transparent); outline-offset: 2px; }
+.dish-actions{ position: relative; z-index: 1; }
+.dish:hover{ border-color: color-mix(in srgb, var(--primary) 35%, var(--border)); }
+.dish-meta{ padding-right: 8px; color: var(--text-3); font-size: .82rem; font-weight: 600; }
+.optional{ color: var(--text-3); font-weight: 600; }
+
+/* ---------- Mængde i ugeplanen ---------- */
+.sheet-head-main{ display: flex; align-items: center; gap: 2px; min-width: 0; }
+.sheet-back{ margin-left: -10px; }
+.meal-amount{ display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+.amount-dish{ margin-bottom: 14px; color: var(--text-2); font-size: .9rem; }
+.segmented.segmented-2{ grid-template-columns: repeat(2, 1fr); margin-bottom: 18px; }
+.amount-row{ display: flex; align-items: center; gap: 10px; }
+.amount-input{ flex: 1; }
+.amount-input input{ font-size: 1.25rem; font-weight: 700; text-align: center; }
+.amount-presets{ display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.amount-presets .chip.is-active{ border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+.meal-amount-text{ color: var(--text-3); font-size: .8rem; font-weight: 600; }
+
 /* ---------- Opsætningsside ---------- */
 .setup{ width: calc(100% - 32px); max-width: 640px; margin: 48px auto; padding: 28px; }
 .setup h1{ margin-bottom: 8px; font-size: 1.4rem; }
