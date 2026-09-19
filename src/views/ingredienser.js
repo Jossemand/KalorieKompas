@@ -1,12 +1,15 @@
 import { store, subscribe, addIngrediens, updateIngrediens, deleteIngrediens } from "../state.js";
 import { icon } from "../lib/icons.js";
 import { escapeHtml, formatKcal, highlight, parseDecimal, parsePositive, searchByName, toInputValue } from "../lib/format.js";
+import { formatKr, prisPer100g, toPrisInput } from "../lib/pris.js";
 import { brandHtml, emptyStateHtml, macrosHtml } from "../lib/templates.js";
 import { confirmDialog, openSheet, setBusy, showError, toast } from "../lib/ui.js";
 import { setupScanner, startScanner } from "../scanner.js";
 
 const $ = id => document.getElementById(id);
 const FIELDS = { kcal: "ingrediens-kcal", protein: "ingrediens-protein", fedt: "ingrediens-fedt", kulhydrat: "ingrediens-kulhydrat" };
+const PRIS = "ingrediens-pris";
+const PRIS_MAENGDE = "ingrediens-pris-maengde";
 
 let query = "";
 let editingId = null;  // id på ingrediensen, der redigeres – null betyder ny ingrediens
@@ -38,7 +41,10 @@ export function setupIngredienser(){
 
   $("ingredienser-list").addEventListener("click", onListClick);
   $("ingrediens-form").addEventListener("submit", onSubmit);
-  $("ingrediens-form").addEventListener("input", updateDishAmountHint);
+  $("ingrediens-form").addEventListener("input", () => {
+    updateDishAmountHint();
+    updatePrisHint();
+  });
   subscribe(render);
 }
 
@@ -64,6 +70,19 @@ function updateDishAmountHint(){
   $("ingrediens-maengde-hint").textContent = gram && Number.isFinite(kcal100)
     ? `= ${formatKcal((gram / 100) * kcal100)} kcal i retten`
     : "Udfyld energi og mængde for at se kalorierne i retten";
+}
+
+// Viser kr/100 g, så man kan se hvad pakkeprisen bliver til i en madret
+function updatePrisHint(){
+  const pris = parseDecimal($(PRIS).value);
+  const gram = parseDecimal($(PRIS_MAENGDE).value);
+  const per100 = prisPer100g({ pris, pris_maengde_g: gram });
+  const mangler = (pris !== null && gram === null) || (pris === null && gram !== null);
+  $("ingrediens-pris-hint").textContent = per100 !== null
+    ? `= ${formatKr(per100)} kr/100 g`
+    : mangler
+      ? "Udfyld både pris og pakkestørrelse – ellers kan prisen ikke regnes ud"
+      : "Udfyld begge felter, så regnes prisen med i madretter og ugeplan";
 }
 
 function render(){
@@ -145,9 +164,12 @@ function openForm(ing = null, context = null){
     $(FIELDS.protein).value = toInputValue(ing.protein_100g);
     $(FIELDS.fedt).value = toInputValue(ing.fedt_100g);
     $(FIELDS.kulhydrat).value = toInputValue(ing.kulhydrat_100g);
+    $(PRIS).value = toPrisInput(ing.pris);
+    $(PRIS_MAENGDE).value = toInputValue(ing.pris_maengde_g);
   }
   setLookup(null);
   updateDishAmountHint();
+  updatePrisHint();
   openSheet($("ingrediens-sheet"));
 }
 
@@ -164,7 +186,7 @@ async function lookupBarcode(barcode){
   $("ingrediens-barcode").value = barcode;
   setLookup("loading", "Henter produkt fra Open Food Facts…", barcode);
   try {
-    const url = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json?fields=product_name,product_name_da,brands,brand_owner,nutriments`;
+    const url = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json?fields=product_name,product_name_da,brands,brand_owner,nutriments,product_quantity,product_quantity_unit`;
     const data = await (await fetch(url)).json();
     if (session !== lookupSession) return;
 
@@ -181,13 +203,22 @@ async function lookupBarcode(barcode){
     $(FIELDS.protein).value = toInputValue(n.proteins_100g);
     $(FIELDS.fedt).value = toInputValue(n.fat_100g);
     $(FIELDS.kulhydrat).value = toInputValue(n.carbohydrates_100g);
+    $(PRIS_MAENGDE).value = toInputValue(packageGrams(product));
     setLookup("found", "Fundet i Open Food Facts", barcode);
     updateDishAmountHint();
+    updatePrisHint();
   } catch (err) {
     if (session !== lookupSession) return;
     console.error(err);
     setLookup("error", "Kunne ikke slå varen op – udfyld selv", barcode);
   }
+}
+
+// Pakkens nettovægt, hvis Open Food Facts har den i gram. Så mangler der kun prisen at taste
+function packageGrams(product){
+  const gram = Number(product.product_quantity);
+  const unit = String(product.product_quantity_unit ?? "g").toLowerCase();
+  return gram > 0 && unit === "g" ? gram : null;
 }
 
 // Nogle produkter har kun energi i kJ (energy_100g). 1 kcal = 4,184 kJ
@@ -222,12 +253,24 @@ async function onSubmit(event){
   }
   const gram = dishContext ? parsePositive($("ingrediens-maengde").value) : null;
   if (dishContext && !gram) invalid.push("ingrediens-maengde");
+
+  // Prisen er valgfri, men den kan kun bruges, hvis både beløb og pakkestørrelse er udfyldt
+  const pris = parseDecimal($(PRIS).value);
+  const prisMaengde = parsePositive($(PRIS_MAENGDE).value);
+  const prisTom = pris === null && $(PRIS_MAENGDE).value.trim() === "";
+  if (!prisTom) {
+    if (pris === null || Number.isNaN(pris) || pris < 0) invalid.push(PRIS);
+    if (!prisMaengde) invalid.push(PRIS_MAENGDE);
+  }
   if (invalid.length) {
     invalid.forEach(id => $(id).closest(".field").classList.add("is-invalid"));
     $(invalid[0]).focus();
-    toast(dishContext
-      ? "Udfyld navn, energi og mængde i retten – værdier skal være tal"
-      : "Udfyld navn og energi – værdier skal være tal", { type: "error" });
+    const prisFejl = invalid.includes(PRIS) || invalid.includes(PRIS_MAENGDE);
+    toast(prisFejl
+      ? "Prisen kræver både et beløb og en pakkestørrelse – eller lad begge felter stå tomme"
+      : dishContext
+        ? "Udfyld navn, energi og mængde i retten – værdier skal være tal"
+        : "Udfyld navn og energi – værdier skal være tal", { type: "error" });
     return;
   }
 
@@ -239,6 +282,8 @@ async function onSubmit(event){
     protein_100g: values.protein ?? 0,
     fedt_100g: values.fedt ?? 0,
     kulhydrat_100g: values.kulhydrat ?? 0,
+    pris: prisTom ? null : pris,
+    pris_maengde_g: prisTom ? null : prisMaengde,
   };
   const submit = $("ingrediens-submit");
   setBusy(submit, true);

@@ -102,6 +102,9 @@
 }
 .dish-kcal{ color: var(--text-3); font-size: .85rem; font-weight: 650; }
 .dish-kcal strong{ margin-right: 2px; color: var(--text); font-size: 1.35rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+/* Pris efter kalorierne – "+" betyder, at nogle ingredienser mangler en pris */
+.dish-price{ color: var(--text-2); font-weight: 750; font-variant-numeric: tabular-nums; }
+.dish-price::before{ margin: 0 6px; color: var(--text-3); content: "·"; }
 .dish-skeleton{ height: 156px; }
 
 /* Byggeren: søgeresultater */
@@ -188,6 +191,8 @@ mark{ background: none; color: var(--primary); font-weight: 800; }
 .summary{ display: flex; flex: 1; flex-direction: column; min-width: 0; line-height: 1.2; }
 .summary-kcal{ font-size: 1.35rem; font-weight: 800; }
 .summary-kcal small{ color: var(--text-3); font-size: .85rem; font-weight: 650; }
+.summary-price{ color: var(--text-2); font-size: 1.05rem; font-weight: 750; font-variant-numeric: tabular-nums; }
+.summary-price::before{ margin: 0 6px; color: var(--text-3); content: "·"; }
 .summary .macros{ margin-top: 3px; font-size: .78rem; }
 
 /* ---------- Ugeplan ---------- */
@@ -255,6 +260,7 @@ mark{ background: none; color: var(--primary); font-weight: 800; }
 .week-summary-total{ color: var(--text-2); font-weight: 600; font-variant-numeric: tabular-nums; }
 .week-summary-total strong{ margin-right: 2px; color: var(--text); font-size: 2rem; font-weight: 800; letter-spacing: -.02em; }
 .week-summary-avg{ color: var(--text-2); font-size: .9rem; }
+.week-summary-price{ color: var(--text); font-size: .95rem; font-weight: 700; font-variant-numeric: tabular-nums; }
 
 .day{ display: flex; flex-direction: column; gap: 14px; padding: 16px; }
 .day.is-today{ border-color: color-mix(in srgb, var(--primary) 55%, var(--border)); }

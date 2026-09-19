@@ -4,7 +4,8 @@ import {
 import { prepareImage } from "../lib/image.js";
 import { icon } from "../lib/icons.js";
 import { escapeHtml, formatGram, formatKcal, highlight, parseDecimal, parsePositive, searchByName, toInputValue } from "../lib/format.js";
-import { formatPortions, kcalPerPortion } from "../lib/portion.js";
+import { formatPortions, kcalPerPortion, pricePerPortion } from "../lib/portion.js";
+import { formatKr, formatPrice, missingPriceText, sumPrice } from "../lib/pris.js";
 import { brandHtml, emptyStateHtml, macrosHtml } from "../lib/templates.js";
 import { confirmDialog, openSheet, setBusy, showError, toast } from "../lib/ui.js";
 import { createIngredientForDish, scanIngredientForDish } from "./ingredienser.js";
@@ -115,7 +116,7 @@ function dishCardHtml(dish){
       <p class="dish-ingredients">${escapeHtml(names || "Ingen ingredienser endnu")}</p>
       ${meta ? `<p class="dish-meta">${escapeHtml(meta)}</p>` : ""}
       <div class="dish-foot">
-        <p class="dish-kcal"><strong>${formatKcal(dish.kcal)}</strong> kcal</p>
+        <p class="dish-kcal"><strong>${formatKcal(dish.kcal)}</strong> kcal${dishPriceHtml(dish)}</p>
         ${macrosHtml(dish)}
       </div>
     </article>`;
@@ -123,9 +124,23 @@ function dishCardHtml(dish){
 
 function dishMeta(dish){
   const parts = [];
-  if (Number(dish.portioner) > 0) parts.push(`${formatPortions(Number(dish.portioner))} (${formatKcal(kcalPerPortion(dish))} kcal/stk.)`);
+  if (Number(dish.portioner) > 0) {
+    const perPortion = formatPrice(pricePerPortion(dish));
+    const perStk = perPortion
+      ? `${formatKcal(kcalPerPortion(dish))} kcal og ${perPortion} pr. stk.`
+      : `${formatKcal(kcalPerPortion(dish))} kcal/stk.`;
+    parts.push(`${formatPortions(Number(dish.portioner))} (${perStk})`);
+  }
   if (Number(dish.faerdig_vaegt_g) > 0) parts.push(`${formatGram(dish.faerdig_vaegt_g)} g færdig`);
   return parts.join(" · ");
+}
+
+// Prisen for hele retten. Mangler nogle ingredienser en pris, markeres tallet som et minimum
+function dishPriceHtml(dish){
+  const text = formatPrice(dish.pris);
+  if (!text) return "";
+  const mangler = missingPriceText(dish.pris);
+  return `<span class="dish-price"${mangler ? ` title="${escapeHtml(mangler)}"` : ""}>${escapeHtml(text)}</span>`;
 }
 
 async function onListClick(event){
@@ -410,6 +425,13 @@ function updateTotals(){
   $("madret-total-kcal").textContent = formatKcal(total.kcal);
   $("madret-total-macros").innerHTML = macrosHtml(total);
 
+  const pris = sumPrice(pending);
+  const prisText = formatPrice(pris);
+  const prisEl = $("madret-total-pris");
+  prisEl.hidden = !prisText;
+  prisEl.textContent = prisText ?? "";
+  prisEl.title = missingPriceText(pris);
+
   // Opdeling: vis kcal pr. portion og pr. 100 g ud fra de indtastede tal
   const rawWeight = pending.reduce((sum, item) => sum + (item.maengde_g || 0), 0);
   const portioner = parsePositive($("madret-portioner").value);
@@ -417,7 +439,10 @@ function updateTotals(){
   $("madret-vaegt").placeholder = rawWeight ? formatGram(rawWeight) : "0";
 
   const facts = [];
-  if (portioner && total.kcal > 0) facts.push(`${formatKcal(total.kcal / portioner)} kcal pr. portion`);
+  if (portioner && total.kcal > 0) {
+    const krPerPortion = pris.kendte > 0 ? ` · ${formatKr(pris.kr / portioner)} kr${pris.ukendte ? "+" : ""} pr. portion` : "";
+    facts.push(`${formatKcal(total.kcal / portioner)} kcal pr. portion${krPerPortion}`);
+  }
   const weight = vaegt ?? rawWeight;
   if (weight > 0 && total.kcal > 0) facts.push(`${formatKcal((total.kcal / weight) * 100)} kcal pr. 100 g`);
   const weightHelp = vaegt ? "" : `Vej hele retten efter tilberedning – ellers bruges ingrediensernes vægt (${formatGram(rawWeight)} g). `;

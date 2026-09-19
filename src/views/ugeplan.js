@@ -1,7 +1,8 @@
 import { DAYS, MEALS, store, subscribe, billedeUrl, saveKalorieMaal, setMadretOpdeling, setMeal } from "../state.js";
 import { icon, MEAL_ICONS } from "../lib/icons.js";
 import { escapeHtml, formatGram, formatKcal, parseDecimal, parsePositive, searchByName, toInputValue } from "../lib/format.js";
-import { dishWeight, entryNutrition, formatAmount, formatPortionCount, formatPortions, kcalPerPortion } from "../lib/portion.js";
+import { dishWeight, entryNutrition, entryPrice, formatAmount, formatPortionCount, formatPortions, kcalPerPortion } from "../lib/portion.js";
+import { addPrices, emptyPrice, formatKrRound, formatPrice, missingPriceText } from "../lib/pris.js";
 import { macrosHtml } from "../lib/templates.js";
 import { openSheet, setBusy, showError, toast } from "../lib/ui.js";
 import { showTab } from "../lib/tabs.js";
@@ -56,9 +57,9 @@ function dayStats(dag){
     const dish = entry && store.madretter.find(d => d.id === entry.madret_id);
     const mealKcal = dish ? Math.round(entryNutrition(dish, entry).kcal) : 0; // afrund pr. måltid, så summen passer
     kcal += mealKcal;
-    return { maaltid, dish, entry, kcal: mealKcal };
+    return { maaltid, dish, entry, kcal: mealKcal, pris: dish ? entryPrice(dish, entry) : emptyPrice() };
   });
-  return { kcal, meals };
+  return { kcal, pris: addPrices(meals.map(meal => meal.pris)), meals };
 }
 
 function render(){
@@ -88,6 +89,7 @@ const progress = (kcal, goal) => (goal > 0 ? Math.min(kcal / goal, 1) * 100 : 0)
 function weekSummaryHtml(stats, goal){
   const planned = DAYS.filter(dag => stats[dag].kcal > 0);
   const total = planned.reduce((sum, dag) => sum + stats[dag].kcal, 0);
+  const pris = addPrices(DAYS.map(dag => stats[dag].pris));
   const average = planned.length ? Math.round(total / planned.length) : 0;
   let diff = "";
   if (goal > 0 && planned.length) {
@@ -100,8 +102,18 @@ function weekSummaryHtml(stats, goal){
       <p class="week-summary-total"><strong>${formatKcal(total)}</strong> kcal</p>
       <p class="week-summary-avg">${planned.length ? `Gns. ${formatKcal(average)} kcal pr. planlagt dag` : "Ingen dage planlagt endnu"}</p>
       ${diff}
+      ${weekPriceHtml(pris, planned.length)}
       <p class="week-summary-avg">${planned.length} af 7 dage planlagt</p>
     </article>`;
+}
+
+// Mad for X kr. "+" betyder, at nogle ingredienser mangler en pris, så beløbet er et minimum
+function weekPriceHtml(pris, plannedDays){
+  const text = formatPrice(pris, { round: true });
+  if (!text) return "";
+  const mangler = missingPriceText(pris);
+  const perDay = plannedDays ? ` · ${formatKrRound(pris.kr / plannedDays)} kr${pris.ukendte ? "+" : ""} pr. planlagt dag` : "";
+  return `<p class="week-summary-price"${mangler ? ` title="${escapeHtml(mangler)}"` : ""}>Mad for ${escapeHtml(text)}${escapeHtml(perDay)}</p>`;
 }
 
 function dayCard(dag, { kcal, meals }, goal){
@@ -133,7 +145,9 @@ function dayCard(dag, { kcal, meals }, goal){
     </article>`;
 }
 
-function mealHtml(dag, { maaltid, dish, entry, kcal }){
+function mealHtml(dag, { maaltid, dish, entry, kcal, pris }){
+  const prisText = formatPrice(pris);
+  const amountText = `${formatAmount(entry)}${prisText ? ` · ${prisText}` : ""}`;
   return `
     <li>
       <button type="button" class="meal${dish ? "" : " is-empty"}" data-day="${dag}" data-meal="${maaltid}">
@@ -144,7 +158,7 @@ function mealHtml(dag, { maaltid, dish, entry, kcal }){
             ${dish ? `<span class="meal-kcal">${formatKcal(kcal)} <small>kcal</small></span>` : ""}
           </span>
           <span class="meal-name">${dish ? escapeHtml(dish.navn) : "Vælg madret"}</span>
-          ${dish ? `<span class="meal-amount-text">${formatAmount(entry)}</span>` : ""}
+          ${dish ? `<span class="meal-amount-text"${prisText && pris.ukendte ? ` title="${escapeHtml(missingPriceText(pris))}"` : ""}>${escapeHtml(amountText)}</span>` : ""}
         </span>
         <span class="meal-chevron">${icon(dish ? "chevron-right" : "plus", 18)}</span>
       </button>
@@ -310,7 +324,8 @@ function renderAmount(){
     `Tom = ingrediensernes vægt (${formatGram(base.raa_vaegt_g)} g). Kogt pasta og ris vejer mere – vej gerne gryden.`;
   $("amount-unit").textContent = unit === "g" ? "g" : "portioner";
 
-  const summary = [`Hele retten: ${formatKcal(dish.kcal)} kcal`];
+  const helePrisen = formatPrice(dish.pris);
+  const summary = [`Hele retten: ${formatKcal(dish.kcal)} kcal${helePrisen ? ` · ${helePrisen}` : ""}`];
   if (Number(dish.portioner) > 0) summary.push(formatPortions(Number(dish.portioner)));
   summary.push(`${formatGram(weight)} g${Number(dish.faerdig_vaegt_g) > 0 ? "" : " (ingredienser)"}`);
   $("amount-dish").textContent = summary.join(" · ");
@@ -322,6 +337,13 @@ function renderAmount(){
   const nutrition = canCalculate ? entryNutrition(dish, { maengde: amount, enhed: unit }) : null;
   $("amount-kcal").textContent = nutrition ? formatKcal(nutrition.kcal) : "–";
   $("amount-macros").innerHTML = nutrition ? macrosHtml(nutrition) : "";
+
+  const pris = canCalculate ? entryPrice(dish, { maengde: amount, enhed: unit }) : null;
+  const prisText = pris ? formatPrice(pris) : null;
+  const prisEl = $("amount-pris");
+  prisEl.hidden = !prisText;
+  prisEl.textContent = prisText ?? "";
+  prisEl.title = pris ? missingPriceText(pris) : "";
 }
 
 function presetsFor(dish, unit){

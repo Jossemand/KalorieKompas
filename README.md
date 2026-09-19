@@ -68,6 +68,15 @@ er bygget endnu (se "Kendte begrænsninger" nedenfor).
 12. **Retter har ingen kategori** – alle retter kan vælges til alle måltider, og valg-arket
     i ugeplanen har søgning. Ingredienser kan redigeres (tryk på kortet), har en valgfri
     producent, og byggeren kan vise alle ingredienser sorteret efter navn eller senest oprettet.
+13. **Pris regnes fra pakkeprisen, ikke fra kr/kg.** På ingrediensen tastes hvad varen
+    kostede (`pris`) og hvor meget der var i pakken (`pris_maengde_g`) – begge felter eller
+    ingen af dem (database-constraint). Appen regner selv kr/100 g, så prisen kan rettes uden
+    at taste vægten igen, og Open Food Facts udfylder pakkestørrelsen ved scanning, når den
+    er kendt i gram. Prisen følger samme vej som kalorierne: ingrediens → madret → andel af
+    retten i ugeplanen. Mangler en ingrediens pris, tælles den som *ukendt* i stedet for at
+    tælle som 0 kr; beløbet vises så med et "+" (fx "24,50 kr+") som "mindst så meget", og
+    er intet i retten prissat, vises prisen slet ikke. Pris ses på madretkortet (og pr.
+    portion), pr. måltid i ugeplanen og som ugens total i opsummeringskortet.
 
 ## Filer
 
@@ -80,7 +89,8 @@ er bygget endnu (se "Kendte begrænsninger" nedenfor).
   (dagskort, valg af madret, kaloriemål).
 - `src/scanner.js` — kamera og stregkodeafkodning.
 - `src/lib/` — ikoner (Lucide), formatering/søgning, toasts/dialoger, faner, HTML-skabeloner,
-  nedskalering af billeder før upload (`image.js`).
+  nedskalering af billeder før upload (`image.js`), mængder/portioner (`portion.js`) og
+  priser (`pris.js`).
 - `src/styles/` — `base.css` (designtokens, lyst/mørkt tema), `layout.css`, `components.css`,
   `sheets.css`, `views.css`.
 - `public/favicon.svg` — app-ikon.
@@ -94,7 +104,8 @@ er bygget endnu (se "Kendte begrænsninger" nedenfor).
 ingredienser
   id uuid pk, navn text, barcode text, kcal_100g numeric,
   protein_100g numeric, fedt_100g numeric, kulhydrat_100g numeric, created_at,
-  producent text  -- valgfri, fx fra Open Food Facts
+  producent text,  -- valgfri, fx fra Open Food Facts
+  pris numeric, pris_maengde_g numeric  -- pakkepris + pakkestørrelse; begge eller ingen (constraint)
 
 madretter
   id uuid pk, navn text, created_at, kladde boolean (default false),

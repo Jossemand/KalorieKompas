@@ -122,3 +122,15 @@ alter table ingredienser add column if not exists producent text;
 
 -- Bed API'et om at opdage de nye kolonner med det samme
 notify pgrst, 'reload schema';
+
+-- ============================================================
+-- Pris pr. ingrediens (tilføjet senere). Hele scriptet kan køres igen.
+-- ============================================================
+-- Hvad varen kostede, og hvor meget der var i pakken. Appen regner selv kr/100 g,
+-- så prisen kan rettes uden at taste vægten igen. Begge felter udfyldes eller ingen af dem
+alter table ingredienser add column if not exists pris numeric check (pris >= 0);
+alter table ingredienser add column if not exists pris_maengde_g numeric check (pris_maengde_g > 0);
+alter table ingredienser drop constraint if exists ingredienser_pris_og_maengde;
+alter table ingredienser add constraint ingredienser_pris_og_maengde check ((pris is null) = (pris_maengde_g is null));
+
+notify pgrst, 'reload schema';

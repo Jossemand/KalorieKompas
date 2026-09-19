@@ -126,10 +126,24 @@ npm run dev</pre>
         </label>
         <label class="field">
           <span class="field-label">Kulhydrat</span>
-          <span class="input-unit"><input id="ingrediens-kulhydrat" inputmode="decimal" autocomplete="off" placeholder="0" enterkeyhint="done"><span>g</span></span>
+          <span class="input-unit"><input id="ingrediens-kulhydrat" inputmode="decimal" autocomplete="off" placeholder="0" enterkeyhint="next"><span>g</span></span>
         </label>
       </div>
       <p class="field-hint">Alle værdier er pr. 100 g</p>
+
+      <div class="section-label"><span>Pris</span><span class="optional">Valgfrit</span></div>
+      <div class="field-grid">
+        <label class="field">
+          <span class="field-label">Pris for varen</span>
+          <span class="input-unit"><input id="ingrediens-pris" inputmode="decimal" autocomplete="off" placeholder="Fx 24,95" enterkeyhint="next"><span>kr</span></span>
+        </label>
+        <label class="field">
+          <span class="field-label">Pakkestørrelse</span>
+          <span class="input-unit"><input id="ingrediens-pris-maengde" inputmode="decimal" autocomplete="off" placeholder="Fx 500" enterkeyhint="done"><span>g</span></span>
+        </label>
+      </div>
+      <p class="field-hint" id="ingrediens-pris-hint">Udfyld begge felter, så regnes prisen med i madretter og ugeplan</p>
+
       <!-- Kun når ingrediensen oprettes fra madret-byggeren -->
       <div class="dish-amount" id="ingrediens-dish-amount" hidden>
         <label class="field">
@@ -211,7 +225,7 @@ npm run dev</pre>
     </div>
     <footer class="sheet-foot">
       <div class="summary">
-        <span class="summary-kcal num"><span id="madret-total-kcal">0</span> <small>kcal</small></span>
+        <span class="summary-kcal num"><span id="madret-total-kcal">0</span> <small>kcal</small><span class="summary-price" id="madret-total-pris" hidden></span></span>
         <div id="madret-total-macros"></div>
       </div>
       <button type="submit" class="btn btn-primary btn-lg" id="madret-submit">Gem madret</button>
@@ -276,7 +290,7 @@ npm run dev</pre>
       </div>
       <footer class="sheet-foot">
         <div class="summary" aria-live="polite">
-          <span class="summary-kcal num"><span id="amount-kcal">0</span> <small>kcal</small></span>
+          <span class="summary-kcal num"><span id="amount-kcal">0</span> <small>kcal</small><span class="summary-price" id="amount-pris" hidden></span></span>
           <div id="amount-macros"></div>
         </div>
         <button type="button" class="icon-btn icon-btn-danger" id="amount-remove" aria-label="Fjern retten fra måltidet" hidden><span data-icon="trash"></span></button>
