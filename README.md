@@ -78,6 +78,19 @@ er bygget endnu (se "Kendte begrænsninger" nedenfor).
     er intet i retten prissat, vises prisen slet ikke. Pris ses på madretkortet (og pr.
     portion), pr. måltid i ugeplanen og som ugens total – i "Hele ugen"-kortet fra 700 px og
     som én linje under dagvælgeren på mobil, hvor kortet er skjult.
+14. **Søgning efter varer i Open Food Facts.** Ingrediens-arket har et søgefelt ved siden af
+    scanning, til to tilfælde: varer uden stregkode (løse grøntsager, kød fra disken), og
+    varer der findes med navn, men uden næringsindhold. Fritekstsøgning kører mod
+    `search.openfoodfacts.org` – `world.openfoodfacts.org/api/v2/search` og `/cgi/search.pl`
+    svarer ofte 503. Søgeindekset har ikke næringsindhold, så resultaterne filtreres med
+    `states_tags:"en:nutrition-facts-completed"`, og tallene hentes først med et almindeligt
+    produktopslag, når en vare vælges. Danske varer søges først (`countries_tags:"en:denmark"`),
+    ellers hele databasen. **Der søges kun på tryk** – Open Food Facts tillader 10 søgninger
+    pr. minut pr. IP (mod 15 produktopslag) og advarer eksplicit mod search-as-you-type.
+    Et valgt resultat overskriver kun næringsindholdet: navn, producent, pakkestørrelse og
+    stregkode bevares, så en scannet vare kan låne makroer fra en lignende vare.
+    NB: `product_quantity` udelades af produkt-API'et, hvis `nutriments` hentes uden at
+    `quantity` også står i `fields` – derfor er begge med i opslaget.
 
 ## Filer
 

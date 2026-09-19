@@ -52,6 +52,7 @@
   font-weight: 600;
 }
 .lookup[data-state="found"]{ background: var(--success-soft); color: var(--success); }
+.lookup[data-state="partial"],
 .lookup[data-state="missing"],
 .lookup[data-state="error"]{ background: var(--warn-soft); color: var(--warn); }
 .lookup-code{ margin-left: auto; font-size: .8rem; opacity: .8; font-variant-numeric: tabular-nums; }
@@ -511,6 +512,9 @@ mark{ background: none; color: var(--primary); font-weight: 800; }
 .browse-sort .chip{ min-height: 36px; }
 .browse-sort .chip.is-active{ border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
 .results.is-browsing{ max-height: 340px; overflow-y: auto; overscroll-behavior: contain; }
+
+/* Søgning efter vare i ingrediens-arket: fylder aldrig mere end en tredjedel af arket */
+#ingrediens-soeg-results{ max-height: 320px; overflow-y: auto; overscroll-behavior: contain; }
 
 /* ---------- Ny ingrediens fra byggeren ---------- */
 .builder-add{ display: flex; flex-wrap: wrap; gap: 4px; margin: 6px 0 0 -12px; }

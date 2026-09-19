@@ -105,6 +105,19 @@ npm run dev</pre>
     <div class="sheet-scroll">
       <div class="lookup" id="lookup-status" hidden></div>
       <input type="hidden" id="ingrediens-barcode">
+      <div class="field">
+        <span class="field-label" id="ingrediens-soeg-label">Find næringsindhold <span class="optional">(valgfri)</span></span>
+        <div class="search-row">
+          <div class="search">
+            <span data-icon="search"></span>
+            <input type="search" id="ingrediens-soeg" placeholder="Fx havregryn" aria-labelledby="ingrediens-soeg-label" aria-controls="ingrediens-soeg-results" autocomplete="off" enterkeyhint="search">
+            <button type="button" class="icon-btn" id="ingrediens-soeg-clear" aria-label="Ryd søgning" hidden><span data-icon="x"></span></button>
+          </div>
+          <button type="button" class="btn btn-secondary browse-toggle" id="ingrediens-soeg-btn"><span data-icon="search"></span>Søg</button>
+        </div>
+        <p class="field-hint" id="ingrediens-soeg-hint">Søg i Open Food Facts, når du ikke har stregkoden, eller varen er registreret uden næringsindhold</p>
+        <ul class="results" id="ingrediens-soeg-results" hidden></ul>
+      </div>
       <label class="field">
         <span class="field-label">Navn</span>
         <input class="input" id="ingrediens-navn" autocomplete="off" placeholder="Fx Havregryn" enterkeyhint="next">
