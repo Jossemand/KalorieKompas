@@ -236,6 +236,25 @@ mark{ background: none; color: var(--primary); font-weight: 800; }
 .day-chip.is-active .day-chip-bar.is-over > span{ background: var(--danger); }
 @media (min-width: 700px){ .day-strip{ display: none; } }
 
+/* Ugens total som én linje på mobil – "Hele ugen"-kortet vises først fra 700 px */
+.week-total{
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0;
+  margin: -4px 0 14px;
+  padding: 0 2px;
+  color: var(--text-2);
+  font-size: .88rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.week-total[hidden]{ display: none; }
+.week-total-label{ color: var(--primary); font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.week-total-value::before{ margin: 0 8px; color: var(--text-3); content: "·"; }
+.week-total-value:last-child{ color: var(--text); }
+@media (min-width: 700px){ .week-total{ display: none; } }
+
 .week{ display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
 @media (max-width: 699px){ .day:not(.is-active){ display: none; } }
 @media (min-width: 700px){ .week{ grid-template-columns: repeat(2, minmax(0, 1fr)); } }

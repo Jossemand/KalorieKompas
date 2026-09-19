@@ -80,19 +80,45 @@ function render(){
       </button>`;
   }).join("");
 
+  renderWeekTotal(stats);
   $("week").innerHTML = DAYS.map(dag => dayCard(dag, stats[dag], goal)).join("") + weekSummaryHtml(stats, goal);
+}
+
+// Ugens tal ét sted – bruges både af opsummeringskortet og linjen på mobil
+function weekTotals(stats){
+  const planned = DAYS.filter(dag => stats[dag].kcal > 0);
+  const kcal = planned.reduce((sum, dag) => sum + stats[dag].kcal, 0);
+  return {
+    plannedDays: planned.length,
+    kcal,
+    average: planned.length ? Math.round(kcal / planned.length) : 0,
+    pris: addPrices(DAYS.map(dag => stats[dag].pris)),
+  };
+}
+
+// Én linje under dagvælgeren: kalorier og pris for hele ugen. Kun på mobil (se views.css)
+function renderWeekTotal(stats){
+  const el = $("week-total");
+  const { plannedDays, kcal, pris } = weekTotals(stats);
+  el.hidden = plannedDays === 0;
+  if (el.hidden) return;
+
+  const prisText = formatPrice(pris, { round: true });
+  const mangler = prisText ? missingPriceText(pris) : "";
+  el.title = mangler;
+  el.innerHTML = `
+    <span class="week-total-label">Hele ugen</span>
+    <span class="week-total-value">${formatKcal(kcal)} kcal</span>
+    ${prisText ? `<span class="week-total-value">${escapeHtml(prisText)}</span>` : ""}`;
 }
 
 const progress = (kcal, goal) => (goal > 0 ? Math.min(kcal / goal, 1) * 100 : 0);
 
 // Ugens total og gennemsnit pr. planlagt dag. Vises som 8. kort i gitteret fra 700 px (se views.css)
 function weekSummaryHtml(stats, goal){
-  const planned = DAYS.filter(dag => stats[dag].kcal > 0);
-  const total = planned.reduce((sum, dag) => sum + stats[dag].kcal, 0);
-  const pris = addPrices(DAYS.map(dag => stats[dag].pris));
-  const average = planned.length ? Math.round(total / planned.length) : 0;
+  const { plannedDays, kcal: total, average, pris } = weekTotals(stats);
   let diff = "";
-  if (goal > 0 && planned.length) {
+  if (goal > 0 && plannedDays) {
     const delta = average - goal;
     diff = `<p class="day-diff ${delta > 0 ? "is-over" : "is-under"}">${formatKcal(Math.abs(delta))} kcal ${delta > 0 ? "over" : "under"} målet i snit</p>`;
   }
@@ -100,10 +126,10 @@ function weekSummaryHtml(stats, goal){
     <article class="week-summary card" aria-label="Opsummering af ugen">
       <p class="week-summary-label">Hele ugen</p>
       <p class="week-summary-total"><strong>${formatKcal(total)}</strong> kcal</p>
-      <p class="week-summary-avg">${planned.length ? `Gns. ${formatKcal(average)} kcal pr. planlagt dag` : "Ingen dage planlagt endnu"}</p>
+      <p class="week-summary-avg">${plannedDays ? `Gns. ${formatKcal(average)} kcal pr. planlagt dag` : "Ingen dage planlagt endnu"}</p>
       ${diff}
-      ${weekPriceHtml(pris, planned.length)}
-      <p class="week-summary-avg">${planned.length} af 7 dage planlagt</p>
+      ${weekPriceHtml(pris, plannedDays)}
+      <p class="week-summary-avg">${plannedDays} af 7 dage planlagt</p>
     </article>`;
 }
 

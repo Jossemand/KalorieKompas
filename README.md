@@ -76,7 +76,8 @@ er bygget endnu (se "Kendte begrænsninger" nedenfor).
     retten i ugeplanen. Mangler en ingrediens pris, tælles den som *ukendt* i stedet for at
     tælle som 0 kr; beløbet vises så med et "+" (fx "24,50 kr+") som "mindst så meget", og
     er intet i retten prissat, vises prisen slet ikke. Pris ses på madretkortet (og pr.
-    portion), pr. måltid i ugeplanen og som ugens total i opsummeringskortet.
+    portion), pr. måltid i ugeplanen og som ugens total – i "Hele ugen"-kortet fra 700 px og
+    som én linje under dagvælgeren på mobil, hvor kortet er skjult.
 
 ## Filer
 
