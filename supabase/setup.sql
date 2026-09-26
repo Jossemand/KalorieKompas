@@ -134,3 +134,16 @@ alter table ingredienser drop constraint if exists ingredienser_pris_og_maengde;
 alter table ingredienser add constraint ingredienser_pris_og_maengde check ((pris is null) = (pris_maengde_g is null));
 
 notify pgrst, 'reload schema';
+
+-- ============================================================
+-- Madretter som ingrediens (tilføjet senere). Hele scriptet kan køres igen.
+-- ============================================================
+-- En linje i en madret peger enten på en ingrediens eller på en anden madret (fx en stor portion
+-- kødsovs, der bruges i flere retter). Mængden er gram af den færdige ret. Slettes den brugte ret,
+-- forsvinder den også fra de retter, den indgår i – ligesom en slettet ingrediens
+alter table madret_ingredienser add column if not exists under_madret_id uuid references madretter(id) on delete cascade;
+alter table madret_ingredienser drop constraint if exists madret_ingredienser_ingrediens_eller_madret;
+alter table madret_ingredienser add constraint madret_ingredienser_ingrediens_eller_madret
+  check ((ingrediens_id is null) <> (under_madret_id is null) and under_madret_id is distinct from madret_id);
+
+notify pgrst, 'reload schema';

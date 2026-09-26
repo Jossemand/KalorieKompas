@@ -236,7 +236,7 @@ function renderOptions(){
     const photo = billedeUrl(dish.billede_sti);
     const meta = Number(dish.portioner) > 0
       ? `${formatPortions(Number(dish.portioner))} · ${formatKcal(kcalPerPortion(dish))} kcal/stk.`
-      : dish.madret_ingredienser.map(row => row.ingredienser?.navn).filter(Boolean).join(", ");
+      : dish.items.map(item => item.ingrediens.navn).filter(Boolean).join(", ");
     return `
       <li>
         <button type="button" class="option${selected ? " is-selected" : ""}" data-option="${dish.id}" aria-pressed="${selected}">

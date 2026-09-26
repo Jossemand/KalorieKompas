@@ -91,6 +91,15 @@ er bygget endnu (se "Kendte begrænsninger" nedenfor).
     stregkode bevares, så en scannet vare kan låne makroer fra en lignende vare.
     NB: `product_quantity` udelades af produkt-API'et, hvis `nutriments` hentes uden at
     `quantity` også står i `fields` – derfor er begge med i opslaget.
+15. **Madretter som ingrediens.** En færdig madret kan bruges i en anden madret, fx en stor
+    portion kødmasse, hvor 150 g kommer i en ret med ris og hytteost. Linjen i
+    `madret_ingredienser` peger så på `under_madret_id` i stedet for `ingrediens_id`, og
+    mængden er gram af den færdige ret. Næringsindhold og pris regnes pr. 100 g ud fra
+    færdigvægten (ellers rå vægt) og følger automatisk med, når den brugte ret ændres. Retter
+    beregnes i afhængighedsrækkefølge i `loadMadretter`. Byggeren tilbyder ikke kladder,
+    retten selv eller retter, der allerede bruger den, så der ikke kan opstå en ring.
+    Da `madret_ingredienser` nu har to fremmednøgler til `madretter`, skal select'en navngive
+    relationen (`madret_ingredienser!madret_id`).
 
 ## Filer
 
@@ -129,6 +138,8 @@ madretter
 madret_ingredienser  (join-tabel, mange-til-mange med mængde)
   id uuid pk, madret_id -> madretter.id (cascade delete),
   ingrediens_id -> ingredienser.id (cascade delete), maengde_g numeric
+  under_madret_id -> madretter.id (cascade delete)  -- en madret brugt som ingrediens;
+                                                    -- præcis én af ingrediens_id/under_madret_id
 
 ugeplan
   id uuid pk, dag text (Mandag..Søndag), maaltid text (samme 4 kategorier),

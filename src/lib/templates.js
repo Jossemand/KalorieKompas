@@ -9,8 +9,9 @@ export function macrosHtml({ protein, fedt, kulhydrat }){
   </div>`;
 }
 
-// Producenten vises som lille tekst efter en ingrediens' navn
+// Producenten vises som lille tekst efter en ingrediens' navn. En madret brugt som ingrediens markeres som sådan
 export function brandHtml(ingrediens){
+  if (ingrediens?.madret_id) return '<span class="brand-text">Madret</span>';
   return ingrediens?.producent ? `<span class="brand-text">${escapeHtml(ingrediens.producent)}</span>` : "";
 }
 

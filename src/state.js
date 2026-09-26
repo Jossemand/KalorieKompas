@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { sumPrice } from "./lib/pris.js";
+import { dishWeight } from "./lib/portion.js";
 
 export const DAYS = ["Mandag", "Tirsdag", "Onsdag", "Torsdag", "Fredag", "Lørdag", "Søndag"];
 export const MEALS = ["Morgenmad", "Frokost", "Aftensmad", "Snack"];
@@ -89,31 +90,76 @@ export async function deleteIngrediens(id){
 }
 
 /* ---------- Madretter og kladder ---------- */
+// madret_ingredienser har to fremmednøgler til madretter (madret_id og under_madret_id), så relationen skal navngives
 const MADRET_SELECT = `
   id, navn, created_at, kladde, billede_sti, portioner, faerdig_vaegt_g,
-  madret_ingredienser (
+  madret_ingredienser!madret_id (
     id,
     maengde_g,
     ingrediens_id,
-    ingredienser ( navn, producent, kcal_100g, protein_100g, fedt_100g, kulhydrat_100g, pris, pris_maengde_g )
+    under_madret_id,
+    ingredienser ( id, navn, producent, kcal_100g, protein_100g, fedt_100g, kulhydrat_100g, pris, pris_maengde_g )
   )
 `;
 
+// En færdig madret som ingrediens: næringsindhold pr. 100 g af den færdige ret (færdigvægt, ellers rå vægt)
+export function madretSomIngrediens(dish){
+  const weight = dishWeight(dish);
+  const per100g = value => (weight > 0 ? (value / weight) * 100 : 0);
+  return {
+    id: `madret:${dish.id}`, // adskiller retten fra ingredienser i byggeren
+    madret_id: dish.id,
+    navn: dish.navn,
+    created_at: dish.created_at,
+    portioner: dish.portioner,
+    kcal_100g: per100g(dish.kcal),
+    protein_100g: per100g(dish.protein),
+    fedt_100g: per100g(dish.fedt),
+    kulhydrat_100g: per100g(dish.kulhydrat),
+    madret_pris: dish.pris,
+    madret_vaegt_g: weight,
+  };
+}
+
 async function loadMadretter(){
   const data = unwrap(await db.from("madretter").select(MADRET_SELECT).order("created_at"), "Kunne ikke hente madretter");
-  store.madretter = data.map(madret => {
-    const items = madret.madret_ingredienser.map(row => ({ ingrediens: row.ingredienser, maengde_g: row.maengde_g }));
-    return {
+  const byId = new Map(data.map(madret => [madret.id, madret]));
+  const done = new Map();
+  const visiting = new Set();
+
+  // En ret, der bruger andre retter, kan først regnes ud, når de er regnet ud
+  const compute = madret => {
+    if (done.has(madret.id)) return done.get(madret.id);
+    if (visiting.has(madret.id)) return null; // ring af retter – forhindres i byggeren, men må ikke låse appen
+    visiting.add(madret.id);
+    const items = madret.madret_ingredienser.map(row => {
+      if (!row.under_madret_id) return { ingrediens: row.ingredienser, maengde_g: Number(row.maengde_g) || 0 };
+      const under = byId.get(row.under_madret_id);
+      const beregnet = under && compute(under);
+      return { ingrediens: beregnet && madretSomIngrediens(beregnet), maengde_g: Number(row.maengde_g) || 0 };
+    }).filter(item => item.ingrediens);
+    visiting.delete(madret.id);
+
+    const result = {
       ...madret,
+      items, // [{ ingrediens, maengde_g }] – ingrediens kan også være en madret (se madretSomIngrediens)
       ...sumNutrition(items),
       pris: sumPrice(items), // { kr, kendte, ukendte } for hele retten
-      raa_vaegt_g: items.reduce((sum, item) => sum + (Number(item.maengde_g) || 0), 0),
+      raa_vaegt_g: items.reduce((sum, item) => sum + item.maengde_g, 0),
     };
-  });
+    done.set(madret.id, result);
+    return result;
+  };
+  store.madretter = data.map(compute);
 }
 
 const linkRows = (madretId, items) =>
-  items.map(item => ({ madret_id: madretId, ingrediens_id: item.ingrediens.id, maengde_g: item.maengde_g }));
+  items.map(({ ingrediens, maengde_g }) => ({
+    madret_id: madretId,
+    ingrediens_id: ingrediens.madret_id ? null : ingrediens.id,
+    under_madret_id: ingrediens.madret_id ?? null,
+    maengde_g,
+  }));
 
 // Erstat rettens ingredienser. De nye indsættes, før de gamle slettes, så retten aldrig står uden ingredienser, hvis noget fejler
 async function replaceLinks(madretId, items){

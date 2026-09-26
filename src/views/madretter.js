@@ -1,5 +1,6 @@
 import {
   store, subscribe, addMadret, updateMadret, deleteMadret, sumNutrition, billedeUrl, setMadretBillede, removeMadretBillede,
+  madretSomIngrediens,
 } from "../state.js";
 import { prepareImage } from "../lib/image.js";
 import { icon } from "../lib/icons.js";
@@ -96,7 +97,7 @@ function render(){
 }
 
 function dishCardHtml(dish){
-  const names = dish.madret_ingredienser.map(row => row.ingredienser?.navn).filter(Boolean).join(", ");
+  const names = dish.items.map(item => item.ingrediens.navn).filter(Boolean).join(", ");
   const name = escapeHtml(dish.navn || "Unavngivet ret");
   const photo = billedeUrl(dish.billede_sti);
   const meta = dishMeta(dish);
@@ -154,10 +155,15 @@ async function onListClick(event){
   const dish = store.madretter.find(d => d.id === card.dataset.id);
   const name = dish.navn || "Unavngivet ret";
   const plannedCount = Object.values(store.ugeplan).filter(entry => entry.madret_id === dish.id).length;
+  const usedIn = store.madretter.filter(d => d.items.some(item => item.ingrediens.madret_id === dish.id)).length;
+  const consequences = [
+    plannedCount && `står ${plannedCount} ${plannedCount === 1 ? "gang" : "gange"} i ugeplanen`,
+    usedIn && `bruges i ${usedIn} ${usedIn === 1 ? "anden madret" : "andre madretter"}`,
+  ].filter(Boolean);
   const confirmed = await confirmDialog({
     title: dish.kladde ? `Slet kladden ${name}?` : `Slet ${name}?`,
-    message: plannedCount
-      ? `Retten står ${plannedCount} ${plannedCount === 1 ? "gang" : "gange"} i ugeplanen og fjernes også derfra.`
+    message: consequences.length
+      ? `Retten ${consequences.join(" og ")} og fjernes også derfra.`
       : dish.kladde ? "Kladden slettes permanent." : "Madretten slettes permanent.",
   });
   if (!confirmed) return;
@@ -186,10 +192,7 @@ export function openEditor(id){
   $("madret-navn").value = dish.navn;
   $("madret-portioner").value = toInputValue(dish.portioner);
   $("madret-vaegt").value = toInputValue(dish.faerdig_vaegt_g);
-  pending = dish.madret_ingredienser.map(row => ({
-    ingrediens: store.ingredienser.find(i => i.id === row.ingrediens_id) ?? { id: row.ingrediens_id, ...row.ingredienser },
-    maengde_g: Number(row.maengde_g) || 0,
-  }));
+  pending = dish.items.map(item => ({ ...item }));
   const url = billedeUrl(dish.billede_sti);
   draftPhoto = url ? { url, blob: null } : null;
   showBuilder();
@@ -291,6 +294,26 @@ function sortIngredients(items){
   return sorted.sort((a, b) => a.navn.localeCompare(b.navn, "da"));
 }
 
+// Færdige madretter kan også bruges som ingrediens – dog ikke retten selv eller en ret, der bruger den (så opstår en ring)
+function usableDishes(){
+  return store.madretter
+    .filter(dish => !dish.kladde && !containsDish(dish, builder.id))
+    .map(madretSomIngrediens);
+}
+
+function containsDish(dish, id, seen = new Set()){
+  if (!id) return false;
+  if (dish.id === id) return true;
+  if (seen.has(dish.id)) return false;
+  seen.add(dish.id);
+  return dish.items.some(item => {
+    const under = item.ingrediens.madret_id && store.madretter.find(d => d.id === item.ingrediens.madret_id);
+    return under && containsDish(under, id, seen);
+  });
+}
+
+const candidates = () => [...store.ingredienser, ...usableDishes()];
+
 function renderResults(){
   const query = $("madret-search").value.trim();
   const box = $("madret-results");
@@ -312,7 +335,8 @@ function renderResults(){
   }
 
   box.hidden = false;
-  if (store.ingredienser.length === 0) {
+  const all = candidates();
+  if (all.length === 0) {
     box.innerHTML = `
       <li class="results-empty">Du har ingen ingredienser endnu.
         <button type="button" class="btn btn-secondary" data-create-ingredient>${icon("plus")}Opret ingrediens</button>
@@ -320,11 +344,11 @@ function renderResults(){
     return;
   }
 
-  let matches = query ? searchByName(store.ingredienser, query) : sortIngredients(store.ingredienser);
+  let matches = query ? searchByName(all, query) : sortIngredients(all);
   if (!browsing) matches = matches.slice(0, MAX_RESULTS);
   if (matches.length === 0) {
     box.innerHTML = `
-      <li class="results-empty">Ingen ingredienser matcher "${escapeHtml(query)}".
+      <li class="results-empty">Ingen ingredienser eller madretter matcher "${escapeHtml(query)}".
         <button type="button" class="btn btn-secondary" data-create-ingredient>${icon("plus")}Opret "${escapeHtml(query)}"</button>
       </li>`;
     return;
@@ -374,12 +398,18 @@ function addCreatedIngredient(ingrediens, gram){
   $("madret-pending").querySelector(`[data-id="${ingrediens.id}"]`)?.scrollIntoView({ block: "nearest", behavior: "smooth" });
 }
 
+// En madret starter med én portion, hvis den er delt op – ellers 100 g
+function defaultGrams(ing){
+  if (!ing.madret_id || !(Number(ing.portioner) > 0) || !(ing.madret_vaegt_g > 0)) return 100;
+  return Math.max(STEP_G, Math.round(ing.madret_vaegt_g / ing.portioner / STEP_G) * STEP_G);
+}
+
 function addPending(id){
-  const ing = store.ingredienser.find(i => i.id === id);
+  const ing = candidates().find(i => i.id === id);
   if (!ing) return;
 
   if (!pending.some(p => p.ingrediens.id === id)) {
-    pending.push({ ingrediens: ing, maengde_g: 100 });
+    pending.push({ ingrediens: ing, maengde_g: defaultGrams(ing) });
     renderPending();
   }
   const search = $("madret-search");

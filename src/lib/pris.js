@@ -29,6 +29,14 @@ export function sumPrice(items){
   for (const { ingrediens, maengde_g } of items) {
     const gram = Number(maengde_g) || 0;
     if (!ingrediens || gram <= 0) continue;
+    // En madret brugt som ingrediens: dens andel af prisen, og dens ingredienser med og uden pris tæller med
+    if (ingrediens.madret_pris) {
+      const { kr, kendte, ukendte } = ingrediens.madret_pris;
+      if (ingrediens.madret_vaegt_g > 0) total.kr += (gram / ingrediens.madret_vaegt_g) * kr;
+      total.kendte += kendte;
+      total.ukendte += ukendte;
+      continue;
+    }
     const per100 = prisPer100g(ingrediens);
     if (per100 === null) total.ukendte++;
     else {
