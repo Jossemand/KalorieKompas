@@ -14,8 +14,8 @@ En personlig webapp (ikke en native/mobil app) til at:
 - Planlægge en ugeplan (7 dage × 4 måltider: Morgenmad/Frokost/Aftensmad/Snack) og se
   dagens samlede kalorier op mod et personligt kaloriemål
 
-Kun til privat/personligt brug — ikke en produkt-app til andre brugere. Ingen login-system
-er bygget endnu (se "Kendte begrænsninger" nedenfor).
+Kun til privat brug — ikke en produkt-app til andre brugere. Bruges af to personer i samme
+husstand med hvert sit login (se beslutning 16).
 
 ## Beslutninger der er taget (og hvorfor)
 
@@ -100,11 +100,29 @@ er bygget endnu (se "Kendte begrænsninger" nedenfor).
     retten selv eller retter, der allerede bruger den, så der ikke kan opstå en ring.
     Da `madret_ingredienser` nu har to fremmednøgler til `madretter`, skal select'en navngive
     relationen (`madret_ingredienser!madret_id`).
+16. **To brugere med login (e-mail + adgangskode).** Magic link blev fravalgt: bruger ville
+    have, at browseren husker adgangskoden, og Supabase' indbyggede mail-afsender tillader
+    kun få mails i timen. Supabase gemmer sessionen i browseren og forlænger den selv, så
+    man sjældent ser login-skærmen; "Log ud" logger kun den aktuelle browser ud.
+    Brugerne oprettes i Supabase-dashboardet, og offentlig tilmelding er slået fra.
+    - **Ingredienser er fælles.** Begge kan oprette, rette og slette dem. Sletning fjerner
+      ingrediensen fra begges retter, og bekræftelsen siger det.
+    - **Madretter tilhører én bruger** (`user_id`). Alle indloggede kan *se* alle retter, men
+      kun ejeren kan ændre dem. Under Madretter kan man skifte til den anden brugers retter
+      (uden kladder) og **importere** en ret: den kopieres til ens egne retter sammen med de
+      retter, den bruger som ingrediens, og billedet kopieres også. Kopien er uafhængig af
+      originalen. RLS tillader kun, at en linje peger på ens egne retter.
+    - **Ugeplan og dagligt kaloriemål er private.** `store.madretter` indeholder kun ens
+      egne retter; de andres ligger i `store.andresMadretter`.
+    - Brugernes navne står i `profiler` (oprettes automatisk ud fra e-mailen; navnet kan
+      rettes i Table Editor). Data fra før login tilhører den bruger, der blev oprettet først.
+    - Billeder ligger stadig i `<madret-id>/<tid>.jpg`. Kun rettens ejer kan uploade; bucketten
+      er offentlig, så den, der kender en billed-URL, kan se billedet.
 
 ## Filer
 
 - `index.html` — app-skal, de tre visninger og dialoger (sheets, bekræftelse, scanner).
-- `src/main.js` — starter appen: styles, Supabase-forbindelse og opsætning af visninger.
+- `src/main.js` — starter appen: styles, Supabase-forbindelse, login/log ud og opsætning af visninger.
 - `src/state.js` — fælles data (`store`) og alle Supabase-kald. Visningerne kalder kun
   funktionerne herfra og gentegner via `subscribe()`.
 - `src/views/` — `ingredienser.js` (liste, søgning, formular, Open Food Facts-opslag),
@@ -130,8 +148,11 @@ ingredienser
   producent text,  -- valgfri, fx fra Open Food Facts
   pris numeric, pris_maengde_g numeric  -- pakkepris + pakkestørrelse; begge eller ingen (constraint)
 
+profiler
+  id uuid pk -> auth.users.id, navn text  -- oprettes af en trigger, når en bruger oprettes
+
 madretter
-  id uuid pk, navn text, created_at, kladde boolean (default false),
+  id uuid pk, user_id -> auth.users.id (ejer), navn text, created_at, kladde boolean (default false),
   billede_sti text, portioner numeric, faerdig_vaegt_g numeric,  -- valgfrie
   kategori text  -- ubrugt: retter kan bruges til alle måltider (kolonnen er bevaret, ikke slettet)
 
@@ -142,12 +163,31 @@ madret_ingredienser  (join-tabel, mange-til-mange med mængde)
                                                     -- præcis én af ingrediens_id/under_madret_id
 
 ugeplan
-  id uuid pk, dag text (Mandag..Søndag), maaltid text (samme 4 kategorier),
-  madret_id -> madretter.id (set null ved delete), unique(dag, maaltid),
+  id uuid pk, user_id -> auth.users.id, dag text (Mandag..Søndag), maaltid text (samme 4 kategorier),
+  madret_id -> madretter.id (set null ved delete), unique(user_id, dag, maaltid),
   maengde numeric, enhed text (g|portion)  -- begge tomme = hele retten
 
 indstillinger
-  id int pk (altid 1), kalorie_maal numeric  -- ét globalt dagligt kaloriemål
+  user_id uuid pk -> auth.users.id, kalorie_maal numeric  -- dagligt kaloriemål pr. bruger;
+                                                         -- mangler rækken, bruges 2000
+```
+
+## Brugere (Supabase-dashboardet)
+
+1. **Authentication → Sign In / Providers**: slå "Allow new users to sign up" fra. Email-
+   provideren skal være slået til.
+2. **Authentication → Users → Add user → Create new user**: opret først din egen bruger,
+   derefter den anden, med e-mail, adgangskode og "Auto Confirm User" slået til. Rækkefølgen
+   betyder noget: data fra før login tildeles den bruger, der blev oprettet først.
+3. Kør `supabase/setup.sql` i SQL Editor. Uden brugere stopper scriptet med en besked.
+4. Ret evt. navnene i `profiler` (Table Editor), som vises i appen.
+
+Glemt adgangskode: sæt en ny i SQL Editor (slet IKKE brugeren – så forsvinder brugerens
+retter, ugeplan og kaloriemål):
+
+```sql
+update auth.users set encrypted_password = crypt('ny-adgangskode', gen_salt('bf'))
+  where email = 'din@email.dk';
 ```
 
 ## Konfiguration (miljøvariabler)
@@ -167,12 +207,9 @@ Env-variabler holder den ude af Git, men beskytter ikke data. Det gør kun RLS.
 
 ## Kendte begrænsninger / ting der bør adresseres videre
 
-- **RLS-policies er helt åbne** (`using (true) with check (true)` på alle tabeller).
-  Det er acceptabelt for et rent personligt projekt, MEN betyder at alle der har URL +
-  anon key kan læse/skrive hele databasen. Anbefaling givet til bruger: hold GitHub-repo
-  privat OG hold den deployede URL uindekseret/ikke delt. En rigtig løsning (Supabase
-  Auth + RLS-policies der tjekker `auth.uid()`) er ikke bygget endnu — spørg brugeren om
-  dette er noget de vil prioritere nu eller senere.
+- **Kun indloggede brugere har adgang** (se beslutning 16). Offentlig tilmelding SKAL være
+  slået fra i Supabase, ellers kan enhver oprette en bruger og se alle madretter og
+  ingredienser.
 - **Ingen automatiserede tests.**
 - **Ingen CI/CD er sat op endeles** — det er formentlig det næste skridt (se nedenfor).
 - **Ingen offline-håndtering.** Fejl vises som toasts, men der er ingen kø eller genforsøg.

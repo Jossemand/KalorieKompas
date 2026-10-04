@@ -1,7 +1,7 @@
 import {
   createElement,
   Camera, CalendarDays, Carrot, Check, ChevronLeft, ChevronRight, CircleAlert, CircleCheck, Coffee, Compass, Cookie,
-  CookingPot, ImagePlus, Keyboard, List, Minus, Plus, Sandwich, ScanBarcode, Search, SearchX, Soup, Target, Trash2, X,
+  CookingPot, Download, ImagePlus, Keyboard, List, LogOut, Minus, Plus, Sandwich, ScanBarcode, Search, SearchX, Soup, Target, Trash2, X,
 } from "lucide";
 
 // Kun de ikoner, appen bruger, kommer med i bundlen
@@ -19,8 +19,10 @@ const ICONS = {
   compass: Compass,
   cookie: Cookie,
   "cooking-pot": CookingPot,
+  download: Download,
   keyboard: Keyboard,
   list: List,
+  "log-out": LogOut,
   minus: Minus,
   plus: Plus,
   sandwich: Sandwich,

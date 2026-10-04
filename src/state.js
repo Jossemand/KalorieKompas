@@ -8,8 +8,11 @@ export const MEALS = ["Morgenmad", "Frokost", "Aftensmad", "Snack"];
 // Fælles data for alle visninger. Ændres kun via funktionerne herunder
 export const store = {
   loaded: false,
-  ingredienser: [],
-  madretter: [],   // inkl. kladder og beregnede felter: kcal, protein, fedt, kulhydrat, raa_vaegt_g, pris
+  brugerId: null,  // den indloggede bruger
+  profiler: [],    // alle brugere: [{ id, navn }]
+  ingredienser: [], // fælles for alle brugere
+  madretter: [],   // dine egne, inkl. kladder og beregnede felter: kcal, protein, fedt, kulhydrat, raa_vaegt_g, pris
+  andresMadretter: [], // de andre brugeres retter (kun til at se og importere), beregnet på samme måde
   ugeplan: {},     // `${dag}|${maaltid}` -> { madret_id, maengde, enhed }
   kalorieMaal: 2000,
 };
@@ -19,6 +22,35 @@ const listeners = new Set();
 
 export function connect(url, key){
   db = createClient(url, key);
+}
+
+/* ---------- Login ---------- */
+// Supabase gemmer sessionen i browseren og forlænger den selv, så man forbliver logget ind
+export async function currentUserId(){
+  const { data } = await db.auth.getSession();
+  return data.session?.user.id ?? null;
+}
+
+export async function signIn(email, password){
+  const { data, error } = await db.auth.signInWithPassword({ email, password });
+  if (error) {
+    const message = error.code === "invalid_credentials" ? "Forkert e-mail eller adgangskode" : error.message;
+    throw new Error(message);
+  }
+  return data.user.id;
+}
+
+// Kun denne browser – de andre enheder forbliver logget ind
+export async function signOut(){
+  const { error } = await db.auth.signOut({ scope: "local" });
+  if (error) throw new Error(`Kunne ikke logge ud: ${error.message}`);
+}
+
+// Fx når der logges ud i en anden fane, eller sessionen ikke længere kan forlænges
+export function onSignedOut(callback){
+  db.auth.onAuthStateChange(event => {
+    if (event === "SIGNED_OUT") callback();
+  });
 }
 
 export function subscribe(listener){
@@ -49,8 +81,9 @@ export function sumNutrition(items){
   return total;
 }
 
-export async function loadAll(){
-  const results = await Promise.allSettled([loadIngredienser(), loadMadretter(), loadIndstillinger(), loadUgeplan()]);
+export async function loadAll(brugerId){
+  store.brugerId = brugerId;
+  const results = await Promise.allSettled([loadProfiler(), loadIngredienser(), loadMadretter(), loadIndstillinger(), loadUgeplan()]);
   store.loaded = true;
   notify();
   const failed = results.find(result => result.status === "rejected");
@@ -60,6 +93,10 @@ export async function loadAll(){
     throw new Error("Databasen skal opdateres: kør supabase/setup.sql igen i Supabase (SQL Editor) og genindlæs siden");
   }
   throw failed.reason;
+}
+
+async function loadProfiler(){
+  store.profiler = unwrap(await db.from("profiler").select("id, navn").order("navn"), "Kunne ikke hente brugerne");
 }
 
 /* ---------- Ingredienser ---------- */
@@ -92,7 +129,7 @@ export async function deleteIngrediens(id){
 /* ---------- Madretter og kladder ---------- */
 // madret_ingredienser har to fremmednøgler til madretter (madret_id og under_madret_id), så relationen skal navngives
 const MADRET_SELECT = `
-  id, navn, created_at, kladde, billede_sti, portioner, faerdig_vaegt_g,
+  id, user_id, navn, created_at, kladde, billede_sti, portioner, faerdig_vaegt_g,
   madret_ingredienser!madret_id (
     id,
     maengde_g,
@@ -121,6 +158,7 @@ export function madretSomIngrediens(dish){
   };
 }
 
+// Alle brugeres retter hentes og regnes ud samlet, men kun dine egne ligger i store.madretter
 async function loadMadretter(){
   const data = unwrap(await db.from("madretter").select(MADRET_SELECT).order("created_at"), "Kunne ikke hente madretter");
   const byId = new Map(data.map(madret => [madret.id, madret]));
@@ -150,7 +188,9 @@ async function loadMadretter(){
     done.set(madret.id, result);
     return result;
   };
-  store.madretter = data.map(compute);
+  const all = data.map(compute);
+  store.madretter = all.filter(madret => madret.user_id === store.brugerId);
+  store.andresMadretter = all.filter(madret => madret.user_id !== store.brugerId);
 }
 
 const linkRows = (madretId, items) =>
@@ -284,20 +324,87 @@ export async function removeMadretBillede(madretId){
   notify();
 }
 
+/* ---------- Importér en anden brugers madret ---------- */
+// Retten og de retter, den bruger som ingrediens – de brugte først, så de findes, når retten oprettes.
+// Alt kopieres, så kopien ikke ændrer sig eller forsvinder, når originalen ændres eller slettes
+export function retterTilImport(id){
+  const byId = new Map(store.andresMadretter.map(madret => [madret.id, madret]));
+  const order = [];
+  const seen = new Set();
+  const visit = madret => {
+    if (!madret || seen.has(madret.id)) return;
+    seen.add(madret.id);
+    madret.madret_ingredienser.forEach(row => visit(byId.get(row.under_madret_id)));
+    order.push(madret);
+  };
+  visit(byId.get(id));
+  return order;
+}
+
+// Returnerer { id, billedeFejl } for kopien af retten. Billeder kopieres til sidst og må ikke stoppe importen
+export async function importMadret(id){
+  const order = retterTilImport(id);
+  const newIds = new Map(); // originalens id -> kopiens id
+  try {
+    for (const madret of order) {
+      const { navn, portioner, faerdig_vaegt_g } = madret;
+      const [copy] = unwrap(await db
+        .from("madretter")
+        .insert([{ navn, portioner, faerdig_vaegt_g, kladde: false }])
+        .select("id"), "Kunne ikke importere madretten");
+      newIds.set(madret.id, copy.id);
+      const rows = madret.madret_ingredienser
+        .filter(row => row.ingrediens_id || newIds.has(row.under_madret_id))
+        .map(row => ({
+          madret_id: copy.id,
+          ingrediens_id: row.ingrediens_id,
+          under_madret_id: row.under_madret_id ? newIds.get(row.under_madret_id) : null,
+          maengde_g: row.maengde_g,
+        }));
+      if (rows.length) unwrap(await db.from("madret_ingredienser").insert(rows), "Kunne ikke importere ingredienserne");
+    }
+  } catch (err) {
+    if (newIds.size) await db.from("madretter").delete().in("id", [...newIds.values()]); // efterlad ikke en halv import
+    throw err;
+  }
+
+  let billedeFejl = null;
+  for (const madret of order.filter(m => m.billede_sti)) {
+    try {
+      await copyBillede(madret.billede_sti, newIds.get(madret.id));
+    } catch (err) {
+      billedeFejl ??= err;
+    }
+  }
+  await loadMadretter();
+  notify();
+  return { id: newIds.get(id), billedeFejl };
+}
+
+async function copyBillede(fraSti, madretId){
+  const sti = `${madretId}/${Date.now()}.jpg`;
+  const { error } = await db.storage.from(BILLEDE_BUCKET).copy(fraSti, sti);
+  if (error) throw new Error(`Kunne ikke kopiere billedet: ${error.message}`);
+  unwrap(await db.from("madretter").update({ billede_sti: sti }).eq("id", madretId), "Kunne ikke gemme billedet");
+}
+
 /* ---------- Ugeplan og kaloriemål ---------- */
+// Hver bruger har sit eget mål. En ny bruger har ingen række endnu og starter på 2000 kcal
 async function loadIndstillinger(){
-  const data = unwrap(await db.from("indstillinger").select("*").eq("id", 1).single(), "Kunne ikke hente kaloriemålet");
-  store.kalorieMaal = Number(data.kalorie_maal) || 0;
+  const data = unwrap(await db.from("indstillinger").select("*").eq("user_id", store.brugerId).maybeSingle(), "Kunne ikke hente kaloriemålet");
+  store.kalorieMaal = data ? Number(data.kalorie_maal) || 0 : 2000;
 }
 
 export async function saveKalorieMaal(value){
-  unwrap(await db.from("indstillinger").update({ kalorie_maal: value }).eq("id", 1), "Kunne ikke gemme kaloriemålet");
+  unwrap(await db
+    .from("indstillinger")
+    .upsert([{ user_id: store.brugerId, kalorie_maal: value }], { onConflict: "user_id" }), "Kunne ikke gemme kaloriemålet");
   store.kalorieMaal = value;
   notify();
 }
 
 async function loadUgeplan(){
-  const data = unwrap(await db.from("ugeplan").select("*"), "Kunne ikke hente ugeplanen");
+  const data = unwrap(await db.from("ugeplan").select("*").eq("user_id", store.brugerId), "Kunne ikke hente ugeplanen");
   store.ugeplan = Object.fromEntries(data
     .filter(row => row.madret_id)
     .map(row => [`${row.dag}|${row.maaltid}`, { madret_id: row.madret_id, maengde: row.maengde, enhed: row.enhed }]));
@@ -305,8 +412,8 @@ async function loadUgeplan(){
 
 // entry = { madret_id, maengde, enhed } eller null for at tømme måltidet
 export async function setMeal(dag, maaltid, entry){
-  const row = { dag, maaltid, madret_id: entry?.madret_id ?? null, maengde: entry?.maengde ?? null, enhed: entry?.enhed ?? null };
-  unwrap(await db.from("ugeplan").upsert([row], { onConflict: "dag,maaltid" }), "Kunne ikke gemme ugeplanen");
+  const row = { user_id: store.brugerId, dag, maaltid, madret_id: entry?.madret_id ?? null, maengde: entry?.maengde ?? null, enhed: entry?.enhed ?? null };
+  unwrap(await db.from("ugeplan").upsert([row], { onConflict: "user_id,dag,maaltid" }), "Kunne ikke gemme ugeplanen");
   if (entry) store.ugeplan[`${dag}|${maaltid}`] = { madret_id: row.madret_id, maengde: row.maengde, enhed: row.enhed };
   else delete store.ugeplan[`${dag}|${maaltid}`];
   notify();

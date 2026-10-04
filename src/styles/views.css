@@ -537,3 +537,26 @@ mark{ background: none; color: var(--primary); font-weight: 800; }
   background: var(--surface-2);
   font-size: .85rem;
 }
+
+/* ---------- Login ---------- */
+.login{
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  padding: calc(var(--safe-top) + 24px) var(--gutter) calc(var(--safe-bottom) + 24px);
+}
+.login-card{ display: flex; flex-direction: column; gap: 18px; width: 100%; max-width: 400px; padding: 28px 24px; }
+.login-card .field + .field{ margin-top: 0; }
+.login-title{ margin-top: 6px; font-size: 1.6rem; font-weight: 800; }
+.login-error{ color: var(--danger); font-size: .9rem; font-weight: 600; }
+
+/* ---------- Bruger i topbaren ---------- */
+.topbar-user{ display: flex; align-items: center; gap: 4px; min-width: 0; }
+.topbar-name{ overflow: hidden; color: var(--text-2); font-size: .9rem; font-weight: 650; white-space: nowrap; text-overflow: ellipsis; }
+@media (max-width: 699px){
+  .topbar-name{ max-width: 40vw; }
+}
+
+/* ---------- Andre brugeres madretter ---------- */
+.owner-chips{ margin-top: -4px; }
+.dish-import{ min-height: 40px; margin: 4px 8px 0 0; padding: 0 14px; font-size: .88rem; }

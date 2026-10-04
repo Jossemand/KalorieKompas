@@ -46,11 +46,15 @@ export function showError(error){
 }
 
 // Bekræftelsesdialog, der returnerer true, hvis brugeren bekræfter
-export function confirmDialog({ title, message, confirmLabel = "Slet" }){
+// danger: false giver en almindelig knap i stedet for en rød – til handlinger, der ikke sletter noget
+export function confirmDialog({ title, message, confirmLabel = "Slet", danger = true }){
   const dialog = document.getElementById("confirm-sheet");
   dialog.querySelector("#confirm-title").textContent = title;
   dialog.querySelector("#confirm-message").textContent = message;
-  dialog.querySelector("#confirm-ok").textContent = confirmLabel;
+  const ok = dialog.querySelector("#confirm-ok");
+  ok.textContent = confirmLabel;
+  ok.classList.toggle("btn-danger", danger);
+  ok.classList.toggle("btn-primary", !danger);
 
   return new Promise(resolve => {
     const onClick = event => {

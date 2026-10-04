@@ -152,12 +152,19 @@ async function onListClick(event){
   if (!ing) return;
   if (!event.target.closest("[data-delete]")) return openForm(ing);
 
-  const usedIn = store.madretter.filter(m => m.madret_ingredienser.some(link => link.ingrediens_id === ing.id)).length;
+  // Ingredienser er fælles, så sletningen fjerner den også fra de andre brugeres retter
+  const uses = dishes => dishes.filter(m => m.madret_ingredienser.some(link => link.ingrediens_id === ing.id)).length;
+  const mine = uses(store.madretter);
+  const others = uses(store.andresMadretter);
+  const steder = [
+    mine && `${mine} af dine madretter`,
+    others && `${others} ${others === 1 ? "madret" : "madretter"} hos andre`,
+  ].filter(Boolean);
   const confirmed = await confirmDialog({
     title: `Slet ${ing.navn}?`,
-    message: usedIn
-      ? `Ingrediensen bruges i ${usedIn} ${usedIn === 1 ? "madret" : "madretter"} og fjernes også derfra.`
-      : "Ingrediensen slettes permanent.",
+    message: steder.length
+      ? `Ingrediensen bruges i ${steder.join(" og ")} og fjernes også derfra.`
+      : "Ingrediensen slettes permanent for alle.",
   });
   if (!confirmed) return;
 

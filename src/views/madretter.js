@@ -1,6 +1,6 @@
 import {
   store, subscribe, addMadret, updateMadret, deleteMadret, sumNutrition, billedeUrl, setMadretBillede, removeMadretBillede,
-  madretSomIngrediens,
+  madretSomIngrediens, importMadret, retterTilImport,
 } from "../state.js";
 import { prepareImage } from "../lib/image.js";
 import { icon } from "../lib/icons.js";
@@ -25,10 +25,17 @@ let browsing = false;         // listen over alle ingredienser er åben
 let browseSort = readSortPreference();
 let draftPhoto = null;        // billedet i byggeren: { url, blob } – blob er null for rettens eksisterende billede
 let photoDishId = null;       // madretten, der vises i billede-arket
+let ejer = null;              // null = dine egne retter, ellers id på den bruger, hvis retter vises
 
 export function setupMadretter(){
   $("btn-new-madret").addEventListener("click", () => openBuilder());
   $("madretter-list").addEventListener("click", onListClick);
+  $("madretter-ejer").addEventListener("click", event => {
+    const chip = event.target.closest("[data-ejer]");
+    if (!chip) return;
+    ejer = chip.dataset.ejer || null;
+    render();
+  });
 
   const search = $("madret-search");
   search.addEventListener("input", renderResults);
@@ -69,6 +76,8 @@ export function setupMadretter(){
 /* ---------- Oversigt ---------- */
 function render(){
   if (!store.loaded) return;
+  renderOwners();
+  if (ejer) return renderOthers();
   const drafts = store.madretter.filter(d => d.kladde).reverse(); // nyeste kladde først
   const dishes = store.madretter.filter(d => !d.kladde).sort((a, b) => a.navn.localeCompare(b.navn, "da"));
 
@@ -96,7 +105,64 @@ function render(){
   list.innerHTML = [...drafts, ...dishes].map(dishCardHtml).join("");
 }
 
-function dishCardHtml(dish){
+/* ---------- De andre brugeres retter ---------- */
+const andre = () => store.profiler.filter(profil => profil.id !== store.brugerId);
+
+function renderOwners(){
+  const others = andre();
+  if (!others.some(profil => profil.id === ejer)) ejer = null; // brugeren findes ikke længere
+  const box = $("madretter-ejer");
+  box.hidden = others.length === 0;
+  box.innerHTML = [{ id: "", navn: "Mine retter" }, ...others].map(profil => {
+    const active = (profil.id || null) === ejer;
+    return `<button type="button" class="chip${active ? " is-active" : ""}" data-ejer="${profil.id}" aria-pressed="${active}">${escapeHtml(profil.navn)}</button>`;
+  }).join("");
+}
+
+function renderOthers(){
+  const navn = andre().find(profil => profil.id === ejer)?.navn ?? "";
+  // Kladder er ufærdige og vises kun for ejeren
+  const dishes = store.andresMadretter
+    .filter(d => d.user_id === ejer && !d.kladde)
+    .sort((a, b) => a.navn.localeCompare(b.navn, "da"));
+  $("madretter-sub").textContent = dishes.length
+    ? `${dishes.length} ${dishes.length === 1 ? "madret" : "madretter"} fra ${navn} · importér for at bruge dem`
+    : `${navn} har ingen madretter endnu`;
+
+  const list = $("madretter-list");
+  list.removeAttribute("aria-busy");
+  list.innerHTML = dishes.length
+    ? dishes.map(dish => dishCardHtml(dish, { readonly: true })).join("")
+    : emptyStateHtml({ iconName: "cooking-pot", title: "Ingen madretter endnu", text: `Når ${navn} gemmer en madret, kan du se og importere den her.` });
+}
+
+async function importDish(id){
+  const dish = store.andresMadretter.find(d => d.id === id);
+  if (!dish) return;
+  const brugte = retterTilImport(id).filter(d => d.id !== id).map(d => d.navn);
+  const confirmed = await confirmDialog({
+    title: `Importér ${dish.navn}?`,
+    message: brugte.length
+      ? `Retten kopieres til dine madretter sammen med ${brugte.join(", ")}, som den bruger. Ændringer i originalen påvirker ikke din kopi.`
+      : "Retten kopieres til dine madretter. Ændringer i originalen påvirker ikke din kopi.",
+    confirmLabel: "Importér",
+    danger: false,
+  });
+  if (!confirmed) return;
+
+  try {
+    const { billedeFejl } = await importMadret(id);
+    ejer = null;
+    render();
+    if (billedeFejl) showError(new Error(`${dish.navn} er importeret, men billedet kom ikke med. ${billedeFejl.message}`));
+    else toast(`${dish.navn} er importeret til dine madretter`);
+  } catch (err) {
+    showError(err);
+  }
+}
+
+// readonly: en anden brugers ret – kan ikke åbnes eller ændres, kun importeres
+function dishCardHtml(dish, { readonly = false } = {}){
   const names = dish.items.map(item => item.ingrediens.navn).filter(Boolean).join(", ");
   const name = escapeHtml(dish.navn || "Unavngivet ret");
   const photo = billedeUrl(dish.billede_sti);
@@ -107,11 +173,13 @@ function dishCardHtml(dish){
       <div class="dish-head">
         <div class="dish-heading">
           ${dish.kladde ? '<span class="badge badge-draft">Kladde</span>' : ""}
-          <h3 class="dish-title"><button type="button" class="dish-open">${name}</button></h3>
+          <h3 class="dish-title">${readonly ? name : `<button type="button" class="dish-open">${name}</button>`}</h3>
         </div>
         <div class="dish-actions">
-          <button type="button" class="icon-btn" data-photo aria-label="${photo ? "Skift billede af" : "Tilføj billede til"} ${name}">${icon(photo ? "camera" : "image-plus")}</button>
-          <button type="button" class="icon-btn icon-btn-danger" data-delete aria-label="Slet ${name}">${icon("trash")}</button>
+          ${readonly
+            ? `<button type="button" class="btn btn-secondary dish-import" data-import aria-label="Importér ${name}">${icon("download", 18)}Importér</button>`
+            : `<button type="button" class="icon-btn" data-photo aria-label="${photo ? "Skift billede af" : "Tilføj billede til"} ${name}">${icon(photo ? "camera" : "image-plus")}</button>
+          <button type="button" class="icon-btn icon-btn-danger" data-delete aria-label="Slet ${name}">${icon("trash")}</button>`}
         </div>
       </div>
       <p class="dish-ingredients">${escapeHtml(names || "Ingen ingredienser endnu")}</p>
@@ -149,6 +217,10 @@ async function onListClick(event){
 
   const card = event.target.closest("[data-id]");
   if (!card) return;
+  if (ejer) {
+    if (event.target.closest("[data-import]")) importDish(card.dataset.id);
+    return;
+  }
   if (event.target.closest("[data-photo]")) return openPhotoSheet(card.dataset.id);
   if (!event.target.closest("[data-delete]")) return openEditor(card.dataset.id);
 

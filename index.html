@@ -18,6 +18,23 @@ npm run dev</pre>
   <p>På Vercel sættes de to variabler under Project Settings → Environment Variables. Kør også <code>supabase/setup.sql</code> i Supabase' SQL Editor, så tabellerne findes.</p>
 </div>
 
+<main id="login" class="login" hidden>
+  <form class="login-card card" id="login-form" novalidate>
+    <div class="brand"><span class="brand-mark" data-icon="compass"></span>KalorieKompas</div>
+    <h1 class="login-title">Log ind</h1>
+    <label class="field">
+      <span class="field-label">E-mail</span>
+      <input class="input" type="email" id="login-email" name="email" autocomplete="username" autocapitalize="off" spellcheck="false" enterkeyhint="next">
+    </label>
+    <label class="field">
+      <span class="field-label">Adgangskode</span>
+      <input class="input" type="password" id="login-password" name="password" autocomplete="current-password" enterkeyhint="go">
+    </label>
+    <p class="login-error" id="login-error" role="alert" hidden></p>
+    <button type="submit" class="btn btn-primary btn-lg btn-block" id="login-submit">Log ind</button>
+  </form>
+</main>
+
 <div id="app" class="app" hidden>
   <header class="topbar" id="topbar">
     <div class="brand"><span class="brand-mark" data-icon="compass"></span>KalorieKompas</div>
@@ -26,6 +43,10 @@ npm run dev</pre>
       <button type="button" class="tab" data-tab="madretter"><span class="tab-icon" data-icon="cooking-pot"></span>Madretter</button>
       <button type="button" class="tab" data-tab="ugeplan"><span class="tab-icon" data-icon="calendar-days"></span>Ugeplan</button>
     </nav>
+    <div class="topbar-user">
+      <span class="topbar-name" id="bruger-navn"></span>
+      <button type="button" class="icon-btn" id="btn-logout" aria-label="Log ud" title="Log ud"><span data-icon="log-out"></span></button>
+    </div>
   </header>
 
   <main class="content">
@@ -66,6 +87,8 @@ npm run dev</pre>
           <button type="button" class="btn btn-primary" id="btn-new-madret"><span data-icon="plus"></span>Ny madret</button>
         </div>
       </div>
+      <!-- Vises kun, når der er andre brugere: deres retter kan ses og importeres -->
+      <div class="chips owner-chips" id="madretter-ejer" role="group" aria-label="Vis madretter fra" hidden></div>
       <div class="dish-grid" id="madretter-list" aria-busy="true">
         <div class="skeleton dish-skeleton"></div>
         <div class="skeleton dish-skeleton"></div>

@@ -36,37 +36,19 @@ create table if not exists ugeplan (
   unique (dag, maaltid)
 );
 
+-- Én række pr. bruger med det daglige kaloriemål. Tidligere havde tabellen kun én fælles række (id = 1);
+-- den omdannes i afsnittet om flere brugere nederst
 create table if not exists indstillinger (
-  id int primary key default 1,
+  user_id uuid primary key default auth.uid() references auth.users(id) on delete cascade,
   kalorie_maal numeric default 2000
 );
-insert into indstillinger (id, kalorie_maal)
-  values (1, 2000)
-  on conflict (id) do nothing;
 
--- Row Level Security: åbnet helt op, fordi appen bruges med den offentlige
--- "anon key" og kun er tiltænkt dig selv. Del ikke linket til appen offentligt,
--- da alle med linket kan læse og skrive i databasen.
+-- Row Level Security: reglerne for, hvem der må se og ændre hvad, står i afsnittet om flere brugere nederst
 alter table ingredienser enable row level security;
 alter table madretter enable row level security;
 alter table madret_ingredienser enable row level security;
 alter table ugeplan enable row level security;
 alter table indstillinger enable row level security;
-
-drop policy if exists "allow all ingredienser" on ingredienser;
-create policy "allow all ingredienser" on ingredienser for all using (true) with check (true);
-
-drop policy if exists "allow all madretter" on madretter;
-create policy "allow all madretter" on madretter for all using (true) with check (true);
-
-drop policy if exists "allow all madret_ingredienser" on madret_ingredienser;
-create policy "allow all madret_ingredienser" on madret_ingredienser for all using (true) with check (true);
-
-drop policy if exists "allow all ugeplan" on ugeplan;
-create policy "allow all ugeplan" on ugeplan for all using (true) with check (true);
-
-drop policy if exists "allow all indstillinger" on indstillinger;
-create policy "allow all indstillinger" on indstillinger for all using (true) with check (true);
 
 -- ============================================================
 -- Billeder af madretter (tilføjet senere). Hele scriptet kan køres igen uden problemer.
@@ -81,18 +63,7 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
       file_size_limit = excluded.file_size_limit,
       allowed_mime_types = excluded.allowed_mime_types;
 
--- Samme åbne adgang som tabellerne: alle med anon key kan uploade og slette billeder i bucketten
-drop policy if exists "madret-billeder: læs" on storage.objects;
-create policy "madret-billeder: læs" on storage.objects
-  for select to anon, authenticated using (bucket_id = 'madret-billeder');
-
-drop policy if exists "madret-billeder: upload" on storage.objects;
-create policy "madret-billeder: upload" on storage.objects
-  for insert to anon, authenticated with check (bucket_id = 'madret-billeder');
-
-drop policy if exists "madret-billeder: slet" on storage.objects;
-create policy "madret-billeder: slet" on storage.objects
-  for delete to anon, authenticated using (bucket_id = 'madret-billeder');
+-- Hvem der må uploade og slette billeder, står i afsnittet om flere brugere nederst
 
 -- ============================================================
 -- Portioner og mængder (tilføjet senere). Hele scriptet kan køres igen uden problemer.
@@ -145,5 +116,159 @@ alter table madret_ingredienser add column if not exists under_madret_id uuid re
 alter table madret_ingredienser drop constraint if exists madret_ingredienser_ingrediens_eller_madret;
 alter table madret_ingredienser add constraint madret_ingredienser_ingrediens_eller_madret
   check ((ingrediens_id is null) <> (under_madret_id is null) and under_madret_id is distinct from madret_id);
+
+notify pgrst, 'reload schema';
+
+-- ============================================================
+-- Flere brugere (tilføjet senere). Hele scriptet kan køres igen.
+-- ============================================================
+-- Opret brugerne under Authentication -> Users, FØR scriptet køres (se README). Alt, der fandtes
+-- før login (madretter, ugeplan og kaloriemål), tildeles den bruger, der blev oprettet først.
+-- Ingredienser er fælles. Madretter kan ses af alle (så de kan importeres), men kun ændres af
+-- ejeren. Ugeplan og kaloriemål er private.
+
+-- Brugernes navne, så man kan se hinandens madretter. Navnet kan rettes i Table Editor
+create table if not exists profiler (
+  id uuid primary key references auth.users(id) on delete cascade,
+  navn text not null
+);
+alter table profiler enable row level security;
+
+-- Nye brugere får automatisk en profil med det, der står før @ i e-mailen
+create or replace function public.opret_profil() returns trigger
+  language plpgsql security definer set search_path = '' as $$
+begin
+  insert into public.profiler (id, navn) values (new.id, split_part(new.email, '@', 1))
+    on conflict (id) do nothing;
+  return new;
+end $$;
+drop trigger if exists opret_profil on auth.users;
+create trigger opret_profil after insert on auth.users
+  for each row execute function public.opret_profil();
+insert into profiler (id, navn)
+  select id, split_part(email, '@', 1) from auth.users
+  on conflict (id) do nothing;
+
+alter table madretter add column if not exists user_id uuid default auth.uid() references auth.users(id) on delete cascade;
+alter table ugeplan add column if not exists user_id uuid default auth.uid() references auth.users(id) on delete cascade;
+
+do $$
+declare
+  foerste uuid := (select id from auth.users order by created_at limit 1);
+  gammel_indstilling boolean := exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'indstillinger' and column_name = 'id');
+begin
+  if foerste is null and (
+    exists (select 1 from madretter where user_id is null)
+    or exists (select 1 from ugeplan where user_id is null)
+    or gammel_indstilling and exists (select 1 from indstillinger)
+  ) then
+    raise exception 'Opret først din bruger under Authentication -> Users og kør scriptet igen – de eksisterende data skal have en ejer';
+  end if;
+
+  update madretter set user_id = foerste where user_id is null;
+  update ugeplan set user_id = foerste where user_id is null;
+
+  -- Den fælles række (id = 1) bliver den første brugers kaloriemål
+  if gammel_indstilling then
+    alter table indstillinger add column if not exists user_id uuid references auth.users(id) on delete cascade;
+    update indstillinger set user_id = foerste where id = 1;
+    delete from indstillinger where user_id is null;
+    alter table indstillinger drop column id; -- fjerner også den gamle primærnøgle
+    alter table indstillinger add primary key (user_id);
+    alter table indstillinger alter column user_id set default auth.uid();
+  end if;
+end $$;
+
+alter table madretter alter column user_id set not null;
+alter table ugeplan alter column user_id set not null;
+
+-- Hver bruger har sin egen uge
+alter table ugeplan drop constraint if exists ugeplan_dag_maaltid_key;
+alter table ugeplan drop constraint if exists ugeplan_bruger_dag_maaltid;
+alter table ugeplan add constraint ugeplan_bruger_dag_maaltid unique (user_id, dag, maaltid);
+
+-- Er madretten den indloggede brugers egen? Bruges af reglerne herunder
+create or replace function public.egen_madret(madret text) returns boolean
+  language sql stable set search_path = '' as $$
+  select exists (select 1 from public.madretter where id::text = madret and user_id = (select auth.uid()))
+$$;
+
+-- Den gamle, helt åbne adgang fjernes. Kun indloggede brugere har adgang til noget
+drop policy if exists "allow all ingredienser" on ingredienser;
+drop policy if exists "allow all madretter" on madretter;
+drop policy if exists "allow all madret_ingredienser" on madret_ingredienser;
+drop policy if exists "allow all ugeplan" on ugeplan;
+drop policy if exists "allow all indstillinger" on indstillinger;
+drop policy if exists "madret-billeder: læs" on storage.objects;
+drop policy if exists "madret-billeder: upload" on storage.objects;
+
+drop policy if exists "ingredienser: fælles" on ingredienser;
+create policy "ingredienser: fælles" on ingredienser
+  for all to authenticated using (true) with check (true);
+
+drop policy if exists "madretter: læs" on madretter;
+create policy "madretter: læs" on madretter
+  for select to authenticated using (true);
+drop policy if exists "madretter: opret" on madretter;
+create policy "madretter: opret" on madretter
+  for insert to authenticated with check (user_id = (select auth.uid()));
+drop policy if exists "madretter: ret" on madretter;
+create policy "madretter: ret" on madretter
+  for update to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+drop policy if exists "madretter: slet" on madretter;
+create policy "madretter: slet" on madretter
+  for delete to authenticated using (user_id = (select auth.uid()));
+
+-- En linje må kun pege på ens egne retter, så en importeret ret aldrig afhænger af en andens
+drop policy if exists "madret_ingredienser: læs" on madret_ingredienser;
+create policy "madret_ingredienser: læs" on madret_ingredienser
+  for select to authenticated using (true);
+drop policy if exists "madret_ingredienser: opret" on madret_ingredienser;
+create policy "madret_ingredienser: opret" on madret_ingredienser
+  for insert to authenticated
+  with check (public.egen_madret(madret_id::text) and (under_madret_id is null or public.egen_madret(under_madret_id::text)));
+drop policy if exists "madret_ingredienser: ret" on madret_ingredienser;
+create policy "madret_ingredienser: ret" on madret_ingredienser
+  for update to authenticated
+  using (public.egen_madret(madret_id::text))
+  with check (public.egen_madret(madret_id::text) and (under_madret_id is null or public.egen_madret(under_madret_id::text)));
+drop policy if exists "madret_ingredienser: slet" on madret_ingredienser;
+create policy "madret_ingredienser: slet" on madret_ingredienser
+  for delete to authenticated using (public.egen_madret(madret_id::text));
+
+drop policy if exists "ugeplan: egen" on ugeplan;
+create policy "ugeplan: egen" on ugeplan
+  for all to authenticated
+  using (user_id = (select auth.uid()))
+  with check (user_id = (select auth.uid()) and (madret_id is null or public.egen_madret(madret_id::text)));
+
+drop policy if exists "indstillinger: egen" on indstillinger;
+create policy "indstillinger: egen" on indstillinger
+  for all to authenticated using (user_id = (select auth.uid())) with check (user_id = (select auth.uid()));
+
+drop policy if exists "profiler: læs" on profiler;
+create policy "profiler: læs" on profiler
+  for select to authenticated using (true);
+drop policy if exists "profiler: ret eget navn" on profiler;
+create policy "profiler: ret eget navn" on profiler
+  for update to authenticated using (id = (select auth.uid())) with check (id = (select auth.uid()));
+
+-- Billeder ligger i en mappe pr. madret (<madret-id>/<tid>.jpg). Bucketten er offentlig, så alle med
+-- en billed-URL kan se billedet; kun rettens ejer kan uploade. Slet må også den, der uploadede
+-- filen, fordi retten kan være slettet, før billedet ryddes op
+drop policy if exists "madret-billeder: se" on storage.objects;
+create policy "madret-billeder: se" on storage.objects
+  for select to authenticated using (bucket_id = 'madret-billeder');
+drop policy if exists "madret-billeder: upload egen ret" on storage.objects;
+create policy "madret-billeder: upload egen ret" on storage.objects
+  for insert to authenticated
+  with check (bucket_id = 'madret-billeder' and public.egen_madret((storage.foldername(name))[1]));
+drop policy if exists "madret-billeder: slet" on storage.objects;
+create policy "madret-billeder: slet" on storage.objects
+  for delete to authenticated
+  using (bucket_id = 'madret-billeder'
+    and (owner_id = (select auth.uid())::text or public.egen_madret((storage.foldername(name))[1])));
 
 notify pgrst, 'reload schema';
